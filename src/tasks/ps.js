@@ -61,8 +61,8 @@ class PsTask {
     let deployList = await uuCloud.getAppDeploymentList(resourcePoolUri);
 
     let table = new Table({
-      head: ["asid", "uuSubApp", "Node size", "Node Count"],
-      colWidths: [36, 50, 10, 10]
+      head: ["asid", "uuSubApp", "Tags", "Node size", "Node Count"],
+      colWidths: [36, 50, 20, 12, 13]
     });
 
     deployList.pageEntries.forEach(entry => {
@@ -75,7 +75,11 @@ class PsTask {
       if (entry.nodeSets && entry.nodeSets[0]) {
         record.nodeCount = entry.nodeSets[0].nodeCount;
       }
-      table.push([record.asid, record.code, record.nodeSize, record.nodeCount]);
+      record.tags = "";
+      if (entry.config.deploymentTimeConfig && entry.config.deploymentTimeConfig.tags) {
+        record.tags =  entry.config.deploymentTimeConfig.tags;
+      }
+      table.push([record.asid, record.code, record.tags, record.nodeSize, record.nodeCount]);
     });
 
     console.log(table.toString());

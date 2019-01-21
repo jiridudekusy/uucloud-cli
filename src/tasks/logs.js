@@ -43,13 +43,18 @@ const logsTaskDefinitions = [
     name: "disable-resolving",
     alias: "n",
     type: Boolean,
-    description: "Do not use uuCloud uuCmd getAppDeploymentList to resolve apps codes and asids With this option you can use only appDeploymentUri in apps."
+    description: "Do not use uuCloud uuCmd getAppDeploymentList to resolve apps codes, asids and tags. With this option you can use only appDeploymentUri in apps."
+  },
+  {
+    name: "help",
+    type: Boolean,
+    description: "Print this guide."
   },
   {
     name: 'apps',
     defaultOption: true,
     multiple: true,
-    description: "Definition of apps. It can be either complete appDeploymentUri(one or more), asid(one or more) or start of it or any combination."
+    description: "Definition of apps. It can be either complete appDeploymentUri(one or more), tags (one or more), asid(one or more) or start of it or any combination."
   }
 ];
 
@@ -86,6 +91,29 @@ const sections = [
         description: "Prints logs fol last 24 hours of uuApp with deployment uri \"ues:ABC:DEF:GHI\"."
       },
     ]
+  },
+  {
+    header: "How does apps selection Work ?",
+    content: `Apps selection works using 3 mechanisms. You can combine all of them together.
+              1) {bold Specify uuAppDeploymentUri}
+              In this mode you identify uuApps by specifying their full deployment uri. You can obtain the uri from deployment configuration of the application. Only this mode works with -n.
+              2) {bold Specify asid or part of it}
+              This mode works very similar to docker command but instead of container id you are using asid. You can find asid in output of uucloud ps. It is not required to specify full asid. It is enough to write just few starting characters. 
+              
+              3) {bold Specify tags}
+              This is most comfortable way how to specify uuApps, but it requires changes in deployment configuration. Any app can have in ints deployment configuration following property :
+              tags:"<tag1>,<tag2>,<tag3>" 
+              
+              Any number of tags can be specified, however thay have to be alphanumeric and separated by comma. 
+              
+              In uucloud ps  you can see tags assigned to the application and you can use them to query the logs using following principles. 
+              * comma means and
+              * space means or
+              
+              {underline Examples}:
+              {bold dev1} = All uuApps in resource pool with tag dev1.
+              {bold dev1 dev2} = All uuApps in resource pool with tag dev1 OR dev2.
+              {bold dev1,odm dev1,control} = All uuApps in resource pool with tags (dev1 AND odm) OR (dev1 AND control).`
   }
 ];
 
@@ -95,6 +123,10 @@ class LogsTask {
 
     let options = commandLineArgs(logsTaskDefinitions, {argv: cliArgs});
 
+    if (options.help) {
+      this._printHelp();
+      process.exit(0);
+    }
     if (!options.apps || options.apps.length === 0) {
       this._optionsError("You must specify at least 1 app.");
       process.exit(2);
@@ -105,7 +137,7 @@ class LogsTask {
     }
     let apps;
     if (!options["disable-resolving"]) {
-      if(!options.resourcePool){
+      if (!options.resourcePool) {
         this._optionsError("You must specify resource pool if you want to resolve uuApps deployment using getAppDeploymentList.")
         return;
       }
@@ -114,12 +146,13 @@ class LogsTask {
       apps = this._getAppsFromParams(options.apps);
     }
     if (options.follow) {
+      console.log(apps.map(app => "Following logs for application : " + app.appDeploymentUri).join("\n"));
       await this.followLog(apps);
     } else {
       let from;
       let now = new Date();
       if (options.since) {
-        from = parseRelativeDateTime(options.since,now);
+        from = parseRelativeDateTime(options.since, now);
         if (!from) {
           this._optionsError("Cannot parse since.");
           process.exit(2);
@@ -140,6 +173,7 @@ class LogsTask {
       if (from && !to) {
         to = now;
       }
+      console.log(apps.map(app => "Getting logs for application : " + app.appDeploymentUri).join("\n"));
       if (apps.length != 1) {
         this._optionsError("You can follow logs up to 10 applications, but you can list history logs only for 1.");
         process.exit(2);
@@ -157,11 +191,23 @@ class LogsTask {
       if (appsIdentifiers.indexOf(app.uri) > -1) {
         return true;
       }
-      if(app.asid && appsIdentifiers.filter(appId => app.asid.startsWith(appId)).length > 0){
+      if (app.asid && appsIdentifiers.filter(appId => app.asid.startsWith(appId)).length > 0) {
         return true;
       }
-
-      //TODO filter by tags
+      if (app.config.deploymentTimeConfig && app.config.deploymentTimeConfig.tags) {
+        let appTags = app.config.deploymentTimeConfig.tags.split(",");
+        let matchedIdentifiers = appsIdentifiers.map(id => id.split(",")).filter(tags => {
+          for (let tag of tags) {
+            if (!appTags.includes(tag)) {
+              return false;
+            }
+          }
+          return true;
+        });
+        if (matchedIdentifiers.length > 0) {
+          return true;
+        }
+      }
       return false;
     });
 
