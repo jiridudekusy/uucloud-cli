@@ -1,10 +1,10 @@
 const CmdHelper = require("uu_appg01_core-npm/src/scripts/uu_cloud/misc/cmd-helper.js");
 const AppClient = require("uu_appg01_core-npm/src/scripts/uu_cloud/misc/app-client.js");
-const dateUtils = require("date-and-time");
 const DEFAULT_CMD_BASE_PATH = "uu-logstore/Log/getRecordList/exec";
 const {LoggerFactory} = require("uu_appg01_core-logging");
 const logger = LoggerFactory.get("UuLogStore");
 const moment = require("moment");
+const correctJson = require("../misc/uulogs-json-corrector");
 
 const HEADERS = {
   "Accept": "application/json",
@@ -104,11 +104,33 @@ class UuLogStore {
       return filtered;
     });
     logs = this._correlateLogRecords(logs);
+    logs = this._fixLogRecords(logs);
     logs = logs.map(this._transformTimeAttribute).map(logRecord => {
       logRecord.appDeploymentUri = appDeploymentUri;
       return logRecord
     }).sort(this._logRecordsSortFunction);
     return {totalSize: response.totalSize, logs, processedIds, appDeploymentUri};
+  }
+
+  /**
+   * Tries to fix log records if the message contains invalid JSON.
+   * @param logRecords
+   * @private
+   */
+  _fixLogRecords(logRecords) {
+    return logRecords.map(logRecord => {
+      if (logRecord.recordType === "TRACE_LOG" && !logRecord.logger) {
+        let message = logRecord.message;
+        message = correctJson(message, "message", "traceId");
+        message = correctJson(message, "stackTrace");
+        try {
+          let messageObj = JSON.parse(message);
+          Object.assign(logRecord, messageObj);
+        }catch (e) {
+        }
+      }
+      return logRecord;
+    });
   }
 
   _transformTimeAttribute(logRecord) {
