@@ -1,5 +1,6 @@
 const LogsTask = require("./tasks/logs");
 const PsTask = require("./tasks/ps");
+const UseTask = require("./tasks/use");
 const commandLineArgs = require('command-line-args');
 const commandLineUsage = require('command-line-usage');
 
@@ -16,7 +17,8 @@ const sections = [
   {
     header: 'Command List',
     content: [
-      { name: 'help', summary: 'Display this help' },
+      { name: 'help', summary: 'Display this help.' },
+      { name: 'use', summary: 'Sets up default parameter values.' },
       { name: 'ps', summary: 'Displays list of deployed uuApps.' },
       { name: 'logs', summary: 'Fetch the logs of one or more uuApps' }
     ]
@@ -36,6 +38,8 @@ async function execute() {
     task = new PsTask();
   } else if (mainOptions.command === "logs") {
     task = new LogsTask();
+  } else if(mainOptions.command === "use"){
+    task = new UseTask();
   }
 
   if (!task) {

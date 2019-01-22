@@ -7,10 +7,14 @@ const commandLineUsage = require('command-line-usage');
 const UuCloud = require("../uucloud/uucloud");
 const UESUri = require("../misc/ues-uri");
 const parseRelativeDateTime = require("../misc/relative-date-parser");
+const {commonOptionsDefinitionsWithResourcePool, verifyCommonOptionsDefinitionsWithResourcePool} = require("../misc/common-tasks-option");
+const Config = require("../misc/config");
+const TaskUtils = require("../misc/task-utils");
+// const
 
 const APPLICATION_COLORS = [chalk.green, chalk.magenta, chalk.cyan, chalk.greenBright, chalk.magentaBright, chalk.cyanBright];
 
-const logsTaskDefinitions = [
+const optionsDefinitions = [
   {
     name: "follow",
     alias: "f",
@@ -34,22 +38,12 @@ const logsTaskDefinitions = [
     description: "Show logs before a timestamp (e.g. 2013-01-02T13:23:37) or relative (e.g. 42m for 42 minutes or 2h for 2 hours)."
   },
   {
-    name: "resourcePool",
-    alias: "r",
-    type: String,
-    description: "uuCloud Resource pool uri."
-  },
-  {
     name: "disable-resolving",
     alias: "n",
     type: Boolean,
     description: "Do not use uuCloud uuCmd getAppDeploymentList to resolve apps codes, asids and tags. With this option you can use only appDeploymentUri in apps."
   },
-  {
-    name: "help",
-    type: Boolean,
-    description: "Print this guide."
-  },
+  ...commonOptionsDefinitionsWithResourcePool,
   {
     name: 'apps',
     defaultOption: true,
@@ -58,7 +52,7 @@ const logsTaskDefinitions = [
   }
 ];
 
-const sections = [
+const help = [
   {
     header: "logs command",
     content: "Displays list of deployed uuApps."
@@ -69,7 +63,7 @@ const sections = [
   },
   {
     header: 'Options',
-    optionList: logsTaskDefinitions
+    optionList: optionsDefinitions
   },
   {
     header: "Examples",
@@ -119,71 +113,55 @@ const sections = [
 
 class LogsTask {
 
+  constructor(){
+    this._taskUtils = new TaskUtils(optionsDefinitions, help);
+  }
+
   async execute(cliArgs) {
 
-    let options = commandLineArgs(logsTaskDefinitions, {argv: cliArgs});
-
-    if (options.help) {
-      this._printHelp();
-      process.exit(0);
-    }
-    if (!options.apps || options.apps.length === 0) {
-      this._optionsError("You must specify at least 1 app.");
-      process.exit(2);
-    }
+    let options = this._taskUtils.parseCliArguments(cliArgs);
+    verifyCommonOptionsDefinitionsWithResourcePool(options, this._taskUtils);
+    this._taskUtils.testOption(options.apps && options.apps.length > 0, "You must specify at least 1 app.");
     if (options.follow && (options.since || options.tail || options.until)) {
-      this._optionsError("You can either use follow or other options");
-      process.exit(2);
+      this._taskUtils.printOtionsErrorAndExit("You can either use follow or other options");
     }
     let apps;
+    options = this._taskUtils.mergeWithConfig(options);
     if (!options["disable-resolving"]) {
-      if (!options.resourcePool) {
-        this._optionsError("You must specify resource pool if you want to resolve uuApps deployment using getAppDeploymentList.")
-        return;
-      }
-      apps = await this._getAppsFromAppDeploymentList(options.apps, options.resourcePool);
+      this._taskUtils.testOption(options.resourcePool, "You must specify resource pool(in arguments or using uucloud use) if you want to resolve uuApps deployment using getAppDeploymentList.")
+      apps = await this._getAppsFromAppDeploymentList(options.apps, options.resourcePool, options);
     } else {
       apps = this._getAppsFromParams(options.apps);
     }
     if (options.follow) {
       console.log(apps.map(app => "Following logs for application : " + app.appDeploymentUri).join("\n"));
-      await this.followLog(apps);
+      await this.followLog(apps, options);
     } else {
       let from;
       let now = new Date();
       if (options.since) {
         from = parseRelativeDateTime(options.since, now);
-        if (!from) {
-          this._optionsError("Cannot parse since.");
-          process.exit(2);
-        }
+        this._taskUtils.testOption(from, "Cannot parse since.");
       }
       let to;
       if (options.until) {
         to = parseRelativeDateTime(options.until, now);
-        if (!to) {
-          this._optionsError("Cannot parse until.");
-          process.exit(2);
-        }
+        this._taskUtils.testOption(to, "Cannot parse until.");
       }
       if (to && !from) {
-        this._optionsError("If you specify since, you must also specify until.");
-        return;
+        this._taskUtils.printOtionsErrorAndExit("If you specify since, you must also specify until.");
       }
       if (from && !to) {
         to = now;
       }
       console.log(apps.map(app => "Getting logs for application : " + app.appDeploymentUri).join("\n"));
-      if (apps.length != 1) {
-        this._optionsError("You can follow logs up to 10 applications, but you can list history logs only for 1.");
-        process.exit(2);
-      }
-      await this.getLog(apps, from, to);
+      this._taskUtils.testOption(apps.length === 1, "You can follow logs up to 10 applications, but you can list history logs only for 1.");
+      await this.getLog(apps, from, to, options);
     }
   }
 
-  async _getAppsFromAppDeploymentList(appsIdentifiers, resourcePoolUri) {
-    let oidcToken = new OidcTokenProvider().getToken();
+  async _getAppsFromAppDeploymentList(appsIdentifiers, resourcePoolUri, options) {
+    let oidcToken = await new OidcTokenProvider().getToken(options);
     let uuCloud = new UuCloud({oidcToken});
     let deployList = await uuCloud.getAppDeploymentList(resourcePoolUri);
     let filteredApps = deployList.pageEntries.filter(app => {
@@ -224,8 +202,7 @@ class LogsTask {
     let apps = appsIdentifiers.map(appId => {
       let uesUri = UESUri.parse(appId);
       if (!uesUri || (!uesUri.object.id && !uesUri.object.code)) {
-        this._optionsError(`"${appId}" is not valid deployment uri.`);
-        process.exit(2);
+        this._taskUtils.printOtionsErrorAndExit(`"${appId}" is not valid deployment uri.`);
       }
       let code = uesUri.object.code;
       if (!code) {
@@ -239,8 +216,8 @@ class LogsTask {
     return apps;
   }
 
-  async followLog(apps) {
-    let token = new OidcTokenProvider().getToken();
+  async followLog(apps, options) {
+    let token = await new OidcTokenProvider().getToken(options);
 
     let config = {
       oidcToken: token
@@ -253,8 +230,8 @@ class LogsTask {
     await uuLogStore.tailLogs(appDeploymentUris, (logs) => this._printLogs(logs, appsFormat));
   }
 
-  async getLog(apps, from, to) {
-    let token = new OidcTokenProvider().getToken();
+  async getLog(apps, from, to, options) {
+    let token = await new OidcTokenProvider().getToken(options);
 
     let config = {
       oidcToken: token
@@ -313,15 +290,6 @@ class LogsTask {
     logs.length > 0 && console.log(logs.map(logRecord => this._formatLogRecord(logRecord, apps)).join("\n").trim());
   }
 
-  _optionsError(message) {
-    console.error(message);
-    this._printHelp();
-  }
-
-  _printHelp() {
-    let usage = commandLineUsage(sections);
-    console.log(usage);
-  }
 }
 
 module.exports = LogsTask;

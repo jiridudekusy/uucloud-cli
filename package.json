@@ -1,13 +1,13 @@
 {
   "name": "uucloud-cli",
   "license": "MIT",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/jiridudekusy/uucloud-cli.git"
   },
   "engines": {
-    "node": ">=8.9.0"
+    "node": ">=10.0.0"
   },
   "scripts": {
     "test": "jest"
@@ -23,8 +23,11 @@
     "uu_appg01_core-logging": "^4.3.0",
     "uu_appg01_core-utils": "^4.3.0",
     "uu_appg01_core-appclient": "^4.3.0",
+    "configstore": "^4.0.0",
     "moment": "^2.23.0",
-    "mkdirp": "^0.5.1"
+    "mkdirp": "^0.5.1",
+    "read": "^1.0.7",
+    "oidc-plus4u-vault": "^0.3.2"
   },
   "devDependencies": {
     "jest": "^23.6.0",

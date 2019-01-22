@@ -1,25 +1,13 @@
 const Table = require('cli-table2');
 const OidcTokenProvider = require("../oidc-token-provider");
 const UuCloud = require("../uucloud/uucloud");
-const commandLineArgs = require('command-line-args');
-const commandLineUsage = require('command-line-usage');
+const {commonOptionsDefinitionsWithResourcePool, verifyCommonOptionsDefinitionsWithResourcePool} = require("../misc/common-tasks-option");
+const Config = require("../misc/config");
+const TaskUtils = require("../misc/task-utils");
 
-const psTaskDefinitions = [
-  {
-    name: "resourcePool",
-    alias: "r",
-    type: String,
-    description: "uuCloud Resource pool uri."
-  },
-  {
-    name: "help",
-    alias: "h",
-    type: Boolean,
-    description: "Displays this help."
-  }
-];
+const optionsDefinitions = commonOptionsDefinitionsWithResourcePool;
 
-const sections = [
+const help = [
   {
     header: "ps command",
     content: "Displays list of deployed uuApps."
@@ -30,32 +18,26 @@ const sections = [
   },
   {
     header: 'Options',
-    optionList: psTaskDefinitions
+    optionList: optionsDefinitions
   }
 ];
 
 class PsTask {
 
-  async execute(cliArgs) {
-
-    let options = commandLineArgs(psTaskDefinitions, {argv: cliArgs});
-
-    if(options.help){
-      this._printHelp();
-      return;
-    }
-
-    if (!options.resourcePool) {
-      this._optionsError("Resource pool must be specified.");
-      return;
-    }
-
-    //FIXME read from configuration and params
-    await this.getResourcePoolInfo(options.resourcePool);
+  constructor() {
+    this._taskUtils = new TaskUtils(optionsDefinitions, help);
   }
 
-  async getResourcePoolInfo(resourcePoolUri) {
-    let oidcToken = new OidcTokenProvider().getToken();
+  async execute(cliArgs) {
+    let options = this._taskUtils.parseCliArguments(cliArgs);
+    verifyCommonOptionsDefinitionsWithResourcePool(options, this._taskUtils);
+    options = this._taskUtils.mergeWithConfig(options);
+    this._taskUtils.testOption(options.resourcePool, "Resource pool must be either specified as option or using uucloud use");
+    await this.getResourcePoolInfo(options.resourcePool, options);
+  }
+
+  async getResourcePoolInfo(resourcePoolUri, options) {
+    let oidcToken = await new OidcTokenProvider().getToken(options);
 
     let uuCloud = new UuCloud({oidcToken});
     let deployList = await uuCloud.getAppDeploymentList(resourcePoolUri);
@@ -77,22 +59,12 @@ class PsTask {
       }
       record.tags = "";
       if (entry.config.deploymentTimeConfig && entry.config.deploymentTimeConfig.tags) {
-        record.tags =  entry.config.deploymentTimeConfig.tags;
+        record.tags = entry.config.deploymentTimeConfig.tags;
       }
       table.push([record.asid, record.code, record.tags, record.nodeSize, record.nodeCount]);
     });
 
     console.log(table.toString());
-  }
-
-  _optionsError(message) {
-    console.error(message);
-    this._printHelp();
-  }
-
-  _printHelp() {
-    let usage = commandLineUsage(sections);
-    console.log(usage);
   }
 }
 
