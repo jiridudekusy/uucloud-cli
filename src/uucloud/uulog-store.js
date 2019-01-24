@@ -126,7 +126,7 @@ class UuLogStore {
         try {
           let messageObj = JSON.parse(message);
           Object.assign(logRecord, messageObj);
-        }catch (e) {
+        } catch (e) {
         }
       }
       return logRecord;
@@ -207,9 +207,8 @@ class UuLogStore {
           return acc;
         });
         try {
-          let correlatedLogRecordSource = JSON.parse(correlatedLogRecord.message);
+          let correlatedLogRecordSource = this._parseJson(correlatedLogRecord.message);
           correlatedLogRecord = Object.assign(correlatedLogRecord, correlatedLogRecordSource);
-          correlatedLogRecord.message += correlatedLogRecord.stackTrace;
         } catch (e) {
           correlatedLogRecord.message = "This correlated record is probably not complete, or its message is not valid JSON : " + correlatedLogRecord.message;
         }
@@ -217,6 +216,16 @@ class UuLogStore {
       }
     });
     return resultLogs;
+  }
+
+  _parseJson(message) {
+    try {
+      return JSON.parse(message);
+    } catch (e) {
+      message = correctJson(message, "message", "traceId");
+      message = correctJson(message, "stackTrace");
+      return JSON.parse(message);
+    }
   }
 
 }

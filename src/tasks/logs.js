@@ -154,6 +154,9 @@ class LogsTask {
       if (from && !to) {
         to = now;
       }
+      if(from){
+        console.log(`Getting logs since : ${from.toISOString()} until: ${to.toISOString()}`);
+      }
       console.log(apps.map(app => "Getting logs for application : " + app.appDeploymentUri).join("\n"));
       this._taskUtils.testOption(apps.length === 1, "You can follow logs up to 10 applications, but you can list history logs only for 1.");
       await this.getLog(apps, from, to, options);
@@ -282,7 +285,7 @@ class LogsTask {
   _formatLogRecord(r, apps) {
     //20:49:42.221 [main] DEBUG usy.libra.dataflowgw.SubAppRunner - Running with Spring Boot v1.5.7.RELEASE, Spring v4.3.11.RELEASE
     //@formatter:off
-    return `${this._formatApplication(r, apps)}${dateUtils.format(r.eventTime, "YYYY-MM-DD HH:mm:ss.SSS")} ${r.recordType} [${r.threadName}] ${this._formatLogLevel(r.logLevel)} ${r.logger} - ${r.message}`;
+    return `${this._formatApplication(r, apps)}${dateUtils.format(r.eventTime, "YYYY-MM-DD HH:mm:ss.SSS")} ${r.recordType} [${r.threadName||""}] ${this._formatLogLevel(r.logLevel)} ${r.logger||""} - ${r.message} ${r.stackTrace||""}`;
     //@formatter:on
   }
 
