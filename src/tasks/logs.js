@@ -7,7 +7,7 @@ const commandLineUsage = require('command-line-usage');
 const UuCloud = require("../uucloud/uucloud");
 const UESUri = require("../misc/ues-uri");
 const parseRelativeDateTime = require("../misc/relative-date-parser");
-const {commonOptionsDefinitionsWithResourcePool, verifyCommonOptionsDefinitionsWithResourcePool} = require("../misc/common-tasks-option");
+const {commonOptionsDefinitionsWithPresent, verifyCommonOptionsDefinitionsWithPresent} = require("../misc/common-tasks-option");
 const Config = require("../misc/config");
 const TaskUtils = require("../misc/task-utils");
 // const
@@ -43,7 +43,12 @@ const optionsDefinitions = [
     type: Boolean,
     description: "Do not use uuCloud uuCmd getAppDeploymentList to resolve apps codes, asids and tags. With this option you can use only appDeploymentUri in apps."
   },
-  ...commonOptionsDefinitionsWithResourcePool,
+  {
+    name: "log-store-uri",
+    type: String,
+    description: "Use different uuLostoreBaseUri than default."
+  },
+  ...commonOptionsDefinitionsWithPresent,
   {
     name: 'apps',
     defaultOption: true,
@@ -113,23 +118,27 @@ const help = [
 
 class LogsTask {
 
-  constructor(){
+  constructor() {
     this._taskUtils = new TaskUtils(optionsDefinitions, help);
   }
 
   async execute(cliArgs) {
 
     let options = this._taskUtils.parseCliArguments(cliArgs);
-    verifyCommonOptionsDefinitionsWithResourcePool(options, this._taskUtils);
+    verifyCommonOptionsDefinitionsWithPresent(options, this._taskUtils);
     this._taskUtils.testOption(options.apps && options.apps.length > 0, "You must specify at least 1 app.");
     if (options.follow && (options.since || options.tail || options.until)) {
       this._taskUtils.printOtionsErrorAndExit("You can either use follow or other options");
     }
+    let present = this._taskUtils.loadPresent(options);
     let apps;
-    options = this._taskUtils.mergeWithConfig(options);
+    options = this._taskUtils.mergeWithConfig(options, present);
     if (!options["disable-resolving"]) {
-      this._taskUtils.testOption(options.resourcePool, "You must specify resource pool(in arguments or using uucloud use) if you want to resolve uuApps deployment using getAppDeploymentList.")
-      apps = await this._getAppsFromAppDeploymentList(options.apps, options.resourcePool, options);
+      if (!present || !present.mocks || !present.mocks.getAppDeploymentList) {
+        this._taskUtils.testOption(options.resourcePool,
+            "You must specify resource pool(in arguments, using uucloud use or use present with mock response to getAppDeploymentList) if you want to resolve uuApps deployment using getAppDeploymentList.")
+      }
+      apps = await this._getAppsFromAppDeploymentList(options.apps, options.resourcePool, options, present);
     } else {
       apps = this._getAppsFromParams(options.apps);
     }
@@ -154,7 +163,7 @@ class LogsTask {
       if (from && !to) {
         to = now;
       }
-      if(from){
+      if (from) {
         console.log(`Getting logs since : ${from.toISOString()} until: ${to.toISOString()}`);
       }
       console.log(apps.map(app => "Getting logs for application : " + app.appDeploymentUri).join("\n"));
@@ -163,10 +172,15 @@ class LogsTask {
     }
   }
 
-  async _getAppsFromAppDeploymentList(appsIdentifiers, resourcePoolUri, options) {
-    let oidcToken = await new OidcTokenProvider().getToken(options);
-    let uuCloud = new UuCloud({oidcToken});
-    let deployList = await uuCloud.getAppDeploymentList(resourcePoolUri);
+  async _getAppsFromAppDeploymentList(appsIdentifiers, resourcePoolUri, options, present) {
+    let deployList;
+    if (present.mocks && present.mocks.getAppDeploymentList) {
+      deployList = present.mocks.getAppDeploymentList;
+    } else {
+      let oidcToken = await new OidcTokenProvider().getToken(options);
+      let uuCloud = new UuCloud({oidcToken});
+      let deployList = await uuCloud.getAppDeploymentList(resourcePoolUri);
+    }
     let filteredApps = deployList.pageEntries.filter(app => {
       //if user specified whole deployment uri
       if (appsIdentifiers.indexOf(app.uri) > -1) {
@@ -225,7 +239,9 @@ class LogsTask {
     let config = {
       oidcToken: token
     };
-
+    if(options["log-store-uri"]){
+      config.logStoreUri = options["log-store-uri"];
+    }
     let uuLogStore = new UuLogStore(config);
     let appDeploymentUris = apps.map(app => app.appDeploymentUri);
     let appsFormat = this._prepareApplicationFormat(apps);
@@ -239,7 +255,9 @@ class LogsTask {
     let config = {
       oidcToken: token
     };
-
+    if(options["log-store-uri"]){
+      config.logStoreUri = options["log-store-uri"];
+    }
     let uuLogStore = new UuLogStore(config);
     let appDeploymentUris = apps.map(app => app.appDeploymentUri);
     let appsFormat = this._prepareApplicationFormat(apps);

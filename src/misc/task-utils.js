@@ -17,8 +17,16 @@ class TaskUtils {
     return options;
   }
 
-  mergeWithConfig(options){
-    return Object.assign({}, Config.all, options);
+  mergeWithConfig(options, present){
+    if(present) {
+      let presentClone = Object.assign({}, present);
+      delete presentClone.mocks;
+      return Object.assign(presentClone, options);
+    } else {
+      let cfgClone = Object.assign({}, Config.all);
+      delete cfgClone.presents;
+      return Object.assign(cfgClone, options);
+    }
   }
 
   printHelpAndExit(exitCode = 0) {
@@ -36,6 +44,16 @@ class TaskUtils {
   printOtionsErrorAndExit(errorMessage){
     console.error(errorMessage);
     this.printHelpAndExit(2);
+  }
+
+  loadPresent(options){
+    if(options.present){
+      if(Config.all.presents && Config.all.presents[options.present]){
+        return Config.all.presents[options.present];
+      }
+      this.printOtionsErrorAndExit(`Present "${options.present}" has not been found`);
+    }
+    return null;
   }
 }
 

@@ -1,11 +1,11 @@
 const Table = require('cli-table2');
 const OidcTokenProvider = require("../oidc-token-provider");
 const UuCloud = require("../uucloud/uucloud");
-const {commonOptionsDefinitionsWithResourcePool, verifyCommonOptionsDefinitionsWithResourcePool} = require("../misc/common-tasks-option");
+const {commonOptionsDefinitionsWithPresent, verifyCommonOptionsDefinitionsWithPresent} = require("../misc/common-tasks-option");
 const Config = require("../misc/config");
 const TaskUtils = require("../misc/task-utils");
 
-const optionsDefinitions = commonOptionsDefinitionsWithResourcePool;
+const optionsDefinitions = commonOptionsDefinitionsWithPresent;
 
 const help = [
   {
@@ -30,18 +30,26 @@ class PsTask {
 
   async execute(cliArgs) {
     let options = this._taskUtils.parseCliArguments(cliArgs);
-    verifyCommonOptionsDefinitionsWithResourcePool(options, this._taskUtils);
-    options = this._taskUtils.mergeWithConfig(options);
-    this._taskUtils.testOption(options.resourcePool, "Resource pool must be either specified as option or using uucloud use");
-    await this.getResourcePoolInfo(options.resourcePool, options);
+    verifyCommonOptionsDefinitionsWithPresent(options, this._taskUtils);
+    let present = this._taskUtils.loadPresent(options);
+    options = this._taskUtils.mergeWithConfig(options, present);
+    if (!present || !present.mocks || !present.mocks.getAppDeploymentList) {
+      this._taskUtils.testOption(options.resourcePool,
+          "Resource pool must be either specified as option, using uucloud use or present with mock response to getAppDeploymentList must be loaded.");
+    }
+
+    await this.getResourcePoolInfo(options.resourcePool, options, present);
   }
 
-  async getResourcePoolInfo(resourcePoolUri, options) {
-    let oidcToken = await new OidcTokenProvider().getToken(options);
-
-    let uuCloud = new UuCloud({oidcToken});
-    let deployList = await uuCloud.getAppDeploymentList(resourcePoolUri);
-
+  async getResourcePoolInfo(resourcePoolUri, options, present) {
+    let deployList;
+    if (present.mocks && present.mocks.getAppDeploymentList) {
+      deployList = present.mocks.getAppDeploymentList;
+    } else {
+      let oidcToken = await new OidcTokenProvider().getToken(options);
+      let uuCloud = new UuCloud({oidcToken});
+      deployList = await uuCloud.getAppDeploymentList(resourcePoolUri);
+    }
     let table = new Table({
       head: ["asid", "uuSubApp", "Tags", "Node size", "Node Count"],
       colWidths: [36, 50, 20, 12, 13]
@@ -52,7 +60,11 @@ class PsTask {
       record.code = entry.code;
       record.asid = entry.asid;
       //FIXME: asi jich muze byt vice, nebo zadna
-      record.nodeSize = entry.config.deployUnits[0].nodeSize;
+      if (entry.config && entry.config.deployUnits && entry.config.deployUnits[0]) {
+        record.nodeSize = entry.config.deployUnits[0].nodeSize;
+      } else {
+        record.nodeSize = "";
+      }
       record.nodeCount = 0;
       if (entry.nodeSets && entry.nodeSets[0]) {
         record.nodeCount = entry.nodeSets[0].nodeCount;

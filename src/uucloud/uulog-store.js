@@ -1,6 +1,6 @@
 const CmdHelper = require("uu_appg01_core-npm/src/scripts/uu_cloud/misc/cmd-helper.js");
 const AppClient = require("uu_appg01_core-npm/src/scripts/uu_cloud/misc/app-client.js");
-const DEFAULT_CMD_BASE_PATH = "uu-logstore/Log/getRecordList/exec";
+const DEFAULT_CMD_BASE_PATH = "Log/getRecordList/exec";
 const {LoggerFactory} = require("uu_appg01_core-logging");
 const logger = LoggerFactory.get("UuLogStore");
 const moment = require("moment");
@@ -16,10 +16,16 @@ class UuLogStore {
   constructor(config) {
     this._config = config;
     this._appClient = new AppClient(config.oidcToken);
+    if(!this._config.logStoreUri){
+      this._config.logStoreUri = this._appClient.logstoreBaseUri+"/uu-logstore/";
+    }
+    if(!this._config.logStoreUri.endsWith("/")){
+      this._config.logStoreUri+="/";
+    }
   }
 
   _buildExportCmdUri(appDeploymentUri) {
-    return `${this._appClient.logstoreBaseUri}/${DEFAULT_CMD_BASE_PATH}`
+    return `${this._config.logStoreUri}${DEFAULT_CMD_BASE_PATH}`
   }
 
   async tailLogs(appDeploymentUris, callback) {

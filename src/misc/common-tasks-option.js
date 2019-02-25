@@ -31,7 +31,17 @@ const commonOptionsDefinitionsWithResourcePool = [
   ...commonOptionsDefinitionsAuthentication
 ];
 
-function verifyCommonOptionsDefinitionsAuthentication(options, taskUtils){
+const commonOptionsDefinitionsWithPresent = [
+  {
+    name: "present",
+    alias: "p",
+    type: String,
+    description: "Named set of options."
+  },
+  ...commonOptionsDefinitionsWithResourcePool
+];
+
+function verifyCommonOptionsDefinitionsAuthentication(options, taskUtils) {
   if (options.authentication) {
     taskUtils.testOption(["browser", "vault", "interactive"].indexOf(options.authentication) > -1, "Invalid authentication.");
     if (options.authentication === "browser") {
@@ -42,18 +52,22 @@ function verifyCommonOptionsDefinitionsAuthentication(options, taskUtils){
   }
 }
 
-function verifyCommonOptionsDefinitionsWithResourcePool(options, taskUtils){
+function verifyCommonOptionsDefinitionsWithResourcePool(options, taskUtils) {
   verifyCommonOptionsDefinitionsAuthentication(options, taskUtils);
   if (options.resourcePool) {
     taskUtils.testOption(UESUri.parse(options.resourcePool), "Resource pool uri must be valid UES uri.");
   }
 }
 
-
+function verifyCommonOptionsDefinitionsWithPresent(options, taskUtils) {
+  verifyCommonOptionsDefinitionsWithResourcePool(options, taskUtils);
+}
 
 module.exports = {
   commonOptionsDefinitionsAuthentication,
   commonOptionsDefinitionsWithResourcePool,
   verifyCommonOptionsDefinitionsAuthentication,
-  verifyCommonOptionsDefinitionsWithResourcePool
+  verifyCommonOptionsDefinitionsWithResourcePool,
+  commonOptionsDefinitionsWithPresent,
+  verifyCommonOptionsDefinitionsWithPresent
 };

@@ -14,7 +14,10 @@ class OidcTokenProvider {
     if(oidcTokenCache){
       return oidcTokenCache;
     }
-    let mode = options.authentication;
+    let mode;
+    if(options){
+      mode = options.authentication;
+    }
     if (!mode) {
       mode = "browser";
     }
