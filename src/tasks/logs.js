@@ -174,12 +174,12 @@ class LogsTask {
 
   async _getAppsFromAppDeploymentList(appsIdentifiers, resourcePoolUri, options, present) {
     let deployList;
-    if (present.mocks && present.mocks.getAppDeploymentList) {
+    if (present && present.mocks && present.mocks.getAppDeploymentList) {
       deployList = present.mocks.getAppDeploymentList;
     } else {
       let oidcToken = await new OidcTokenProvider().getToken(options);
       let uuCloud = new UuCloud({oidcToken});
-      let deployList = await uuCloud.getAppDeploymentList(resourcePoolUri);
+      deployList = await uuCloud.getAppDeploymentList(resourcePoolUri);
     }
     let filteredApps = deployList.pageEntries.filter(app => {
       //if user specified whole deployment uri

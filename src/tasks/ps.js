@@ -43,7 +43,7 @@ class PsTask {
 
   async getResourcePoolInfo(resourcePoolUri, options, present) {
     let deployList;
-    if (present.mocks && present.mocks.getAppDeploymentList) {
+    if (present && present.mocks && present.mocks.getAppDeploymentList) {
       deployList = present.mocks.getAppDeploymentList;
     } else {
       let oidcToken = await new OidcTokenProvider().getToken(options);
