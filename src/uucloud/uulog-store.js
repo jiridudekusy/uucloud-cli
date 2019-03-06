@@ -178,10 +178,7 @@ class UuLogStore {
       if (tryNumber > 3) {
         throw err;
       }
-      if (err.code === "UU.LOGSTORE/E010-NOT_AUTHORIZED") {
-        return await this._executeCommand(url, method, params, headers, tryNumber++);
-      }
-      throw err;
+      return await this._executeCommand(url, method, params, headers, tryNumber++);
     }
   }
 
