@@ -178,7 +178,7 @@ class UuLogStore {
       if (tryNumber > 3) {
         throw err;
       }
-      return await this._executeCommand(url, method, params, headers, tryNumber++);
+      return await this._executeCommand(url, method, params, headers, ++tryNumber);
     }
   }
 
