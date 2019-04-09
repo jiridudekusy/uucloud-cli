@@ -1,3 +1,4 @@
+const currentDir = process.cwd();
 const LogsTask = require("./tasks/logs");
 const PsTask = require("./tasks/ps");
 const UseTask = require("./tasks/use");
@@ -34,12 +35,13 @@ async function execute() {
   const mainOptions = commandLineArgs(mainDefinitions, {stopAtFirstUnknown: true});
   const argv = mainOptions._unknown || [];
   let task;
+  let opts = {currentDir};
   if (mainOptions.command === "ps") {
-    task = new PsTask();
+    task = new PsTask(opts);
   } else if (mainOptions.command === "logs") {
-    task = new LogsTask();
+    task = new LogsTask(opts);
   } else if(mainOptions.command === "use"){
-    task = new UseTask();
+    task = new UseTask(opts);
   }
 
   if (!task) {

@@ -10,6 +10,11 @@ const parseRelativeDateTime = require("../misc/relative-date-parser");
 const {commonOptionsDefinitionsWithPresent, verifyCommonOptionsDefinitionsWithPresent} = require("../misc/common-tasks-option");
 const Config = require("../misc/config");
 const TaskUtils = require("../misc/task-utils");
+const {promisify} = require('util');
+const mkdirp = promisify(require('mkdirp'));
+const path = require("path");
+const fs = require("fs");
+
 // const
 
 const APPLICATION_COLORS = [chalk.green, chalk.magenta, chalk.cyan, chalk.greenBright, chalk.magentaBright, chalk.cyanBright];
@@ -20,6 +25,12 @@ const optionsDefinitions = [
     alias: "f",
     type: Boolean,
     description: "Follow log output. Cannot be used together with since, tail or until."
+  },
+  {
+    name: "output",
+    alias: "o",
+    type: String,
+    description: "Output directory for logs. Can be used only without \"follow\". With this option it is possible to get logs of multiple apps (each saved in separate file)."
   },
   {
     name: "since",
@@ -74,20 +85,24 @@ const help = [
     header: "Examples",
     content: [
       {
-        example: "uucloud -f ues:ABC:DEF:GHI",
+        example: "uucloud logs -f ues:ABC:DEF:GHI",
         description: "Prints last logs of uuApp with deployment uri \"ues:ABC:DEF:GHI\" and follows the logs."
       },
       {
-        example: "uucloud -f ues:ABC:DEF:GHI ues:ASD:QWE:RTE",
+        example: "uucloud logs -f ues:ABC:DEF:GHI ues:ASD:QWE:RTE",
         description: "Prints last logs of uuApps with deployment uri \"ues:ABC:DEF:GHI\" and \"ues:ASD:QWE:RTE\"and follows the logs."
       },
       {
-        example: "uucloud -r ues:123:456 -f as t81a b66",
+        example: "uucloud logs -r ues:123:456 -f as t81a b66",
         description: "Prints last logs of uuApps with asid that starts with \"as\", \"t81a\" or \"b66\" and follows the logs."
       },
       {
-        example: "uucloud --since 24h ues:ABC:DEF:GHI",
+        example: "uucloud logs --since 24h ues:ABC:DEF:GHI",
         description: "Prints logs fol last 24 hours of uuApp with deployment uri \"ues:ABC:DEF:GHI\"."
+      },
+      {
+        example: "uucloud logs --since 24h -o logs dev1",
+        description: "Gets logs of all applications with tag \"dev1\" and saves them to directoey \"logs\"."
       },
     ]
   },
@@ -118,8 +133,9 @@ const help = [
 
 class LogsTask {
 
-  constructor() {
+  constructor(opts) {
     this._taskUtils = new TaskUtils(optionsDefinitions, help);
+    this._opts = opts;
   }
 
   async execute(cliArgs) {
@@ -143,6 +159,7 @@ class LogsTask {
       apps = this._getAppsFromParams(options.apps);
     }
     if (options.follow) {
+      this._taskUtils.testOption(!options.output, "You cannot uses output together with follow.");
       console.log(apps.map(app => "Following logs for application : " + app.appDeploymentUri).join("\n"));
       await this.followLog(apps, options);
     } else {
@@ -167,7 +184,9 @@ class LogsTask {
         console.log(`Getting logs since : ${from.toISOString()} until: ${to.toISOString()}`);
       }
       console.log(apps.map(app => "Getting logs for application : " + app.appDeploymentUri).join("\n"));
-      this._taskUtils.testOption(apps.length === 1, "You can follow logs up to 10 applications, but you can list history logs only for 1.");
+      if (!options.output) {
+        this._taskUtils.testOption(apps.length === 1, "You can follow logs up to 10 applications, but you can list history logs only for 1.");
+      }
       await this.getLog(apps, from, to, options);
     }
   }
@@ -239,7 +258,7 @@ class LogsTask {
     let config = {
       oidcToken: token
     };
-    if(options["log-store-uri"]){
+    if (options["log-store-uri"]) {
       config.logStoreUri = options["log-store-uri"];
     }
     let uuLogStore = new UuLogStore(config);
@@ -255,14 +274,30 @@ class LogsTask {
     let config = {
       oidcToken: token
     };
-    if(options["log-store-uri"]){
+    if (options["log-store-uri"]) {
       config.logStoreUri = options["log-store-uri"];
     }
     let uuLogStore = new UuLogStore(config);
-    let appDeploymentUris = apps.map(app => app.appDeploymentUri);
-    let appsFormat = this._prepareApplicationFormat(apps);
-    // let logs = await uuLogStore.getLogs(appDeploymentUri, from,null, logs => logs.forEach(formatLogRecord));
-    await uuLogStore.getLogs(appDeploymentUris[0], from, to, (logs) => this._printLogs(logs, appsFormat));
+    if (options.output) {
+      let outputDir = path.resolve(this._opts.currentDir, options.output);
+      await mkdirp(outputDir);
+      let promises = apps.map((app) => uuLogStore.getLogs(app.appDeploymentUri, from, to, (logs) => this._storeLogs(outputDir, app, logs)));
+      await Promise.all(promises);
+      console.log(`All logs has been exported to ${outputDir}`);
+    } else {
+      let appDeploymentUris = apps.map(app => app.appDeploymentUri);
+      let appsFormat = this._prepareApplicationFormat(apps);
+      // let logs = await uuLogStore.getLogs(appDeploymentUri, from,null, logs => logs.forEach(formatLogRecord));
+      await uuLogStore.getLogs(appDeploymentUris[0], from, to, (logs) => this._printLogs(logs, appsFormat));
+    }
+  }
+
+  _storeLogs(output, app, logs) {
+    let uesUri = UESUri.parse(app.appDeploymentUri);
+    let filename = `${uesUri.object.code || ""}-${uesUri.object.id}.log`;
+    let file = path.resolve(output, filename);
+    console.debug(`Storing ${logs.length} for app ${uesUri.object.code  } into file ${file}`);
+    fs.appendFileSync(file, logs.map(logRecord => this._formatLogRecordForFile(logRecord)).join("\n").trim(),"utf8");
   }
 
   _formatLogLevel(logLevel) {
@@ -298,6 +333,12 @@ class LogsTask {
       return acc;
     }, {});
     return apps;
+  }
+
+  _formatLogRecordForFile(r) {
+    //@formatter:off
+    return `${dateUtils.format(r.eventTime, "YYYY-MM-DD HH:mm:ss.SSS")} ${r.recordType} [${r.threadName||""}] ${r.logLevel} ${r.logger||""} - ${r.message} ${r.stackTrace||""}`;
+    //@formatter:on
   }
 
   _formatLogRecord(r, apps) {
