@@ -79,8 +79,10 @@ class UuLogStore {
       }
       if (to && response.logs && response.logs.length > 0) {
         to = new Date(response.logs[0].time);
+      } else {
+        to = null;
       }
-    } while (response.totalSize === 2000 && to);
+    } while (response.totalSize > 0 && to && to > from);
     return result;
   }
 
