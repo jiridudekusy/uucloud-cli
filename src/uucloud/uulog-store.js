@@ -79,6 +79,13 @@ class UuLogStore {
       }
       if (to && response.logs && response.logs.length > 0) {
         to = new Date(response.logs[0].time);
+        to = response.logs.reduce((newTo, r) => {
+          let rTime = new Date(r.time)
+          if(rTime < newTo){
+            return rTime;
+          }
+          return newTo;
+        }, to);
       } else {
         to = null;
       }
