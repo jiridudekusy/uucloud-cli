@@ -5,7 +5,15 @@ const {commonOptionsDefinitionsWithPresent, verifyCommonOptionsDefinitionsWithPr
 const Config = require("../misc/config");
 const TaskUtils = require("../misc/task-utils");
 
-const optionsDefinitions = commonOptionsDefinitionsWithPresent;
+const optionsDefinitions = [
+  ...commonOptionsDefinitionsWithPresent,
+  {
+    name: "codec",
+    type: String,
+    description: "Format od result. Supported values : \"raw\"(JSON received from command call) or \"table\"(default)",
+    defaultValue: "table"
+  }
+];
 
 const help = [
   {
@@ -31,6 +39,7 @@ class PsTask {
   async execute(cliArgs) {
     let options = this._taskUtils.parseCliArguments(cliArgs);
     verifyCommonOptionsDefinitionsWithPresent(options, this._taskUtils);
+    this._taskUtils.testOption(["raw", "table"].includes(options.codec), "Incorrect codec value.");
     let present = this._taskUtils.loadPresent(options);
     options = this._taskUtils.mergeWithConfig(options, present);
     if (!present || !present.mocks || !present.mocks.getAppDeploymentList) {
@@ -50,6 +59,18 @@ class PsTask {
       let uuCloud = new UuCloud({oidcToken});
       deployList = await uuCloud.getAppDeploymentList(resourcePoolUri);
     }
+    if (options.codec === "table") {
+      this._printTable(deployList);
+    } else if (options.codec === "raw") {
+      this._printRaw(deployList);
+    }
+  }
+
+  _printRaw(deployList) {
+    console.log(JSON.stringify(deployList, null, 2));
+  }
+
+  _printTable(deployList) {
     let table = new Table({
       head: ["asid", "uuSubApp", "Tags", "Node size", "Node Count"],
       colWidths: [36, 50, 20, 12, 13]
