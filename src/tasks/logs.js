@@ -14,8 +14,40 @@ const {promisify} = require('util');
 const mkdirp = promisify(require('mkdirp'));
 const path = require("path");
 const fs = require("fs");
+const Handlebars = require("handlebars");
+const helpers = require("handlebars-helpers")({
+  handlebars: Handlebars
+});
 
-// const
+Handlebars.registerHelper("subAppCode", (appDeploymentUri, options) => {
+  if (options.data.root._appsFormat[appDeploymentUri]) {
+    return options.data.root._appsFormat[appDeploymentUri].code;
+  } else {
+    return "UNKNOWN.APP |";
+  }
+});
+
+Handlebars.registerHelper("logLevel", (logLevel, options) => {
+  if (!options.data.root.withColour) {
+    return logLevel;
+  } else {
+    switch (logLevel) {
+      case "ERROR":
+        return chalk.red(logLevel);
+      case "WARNING":
+        return chalk.yellow(logLevel);
+      case "INFO":
+        return chalk.cyan(logLevel);
+      default:
+        return logLevel;
+    }
+  }
+});
+
+const DEFAULT_LOG_FORMAT = `{{subAppCode log.appDeploymentUri}} {{date log.eventTime 'YYYY-MM-DD HH:mm:ss,SSS'}} {{log.recordType}} [{{log.threadName}}] {{logLevel log.logLevel}} {{log.logger}} - {{log.message}} {{log.stackStrace}}`;
+const DEFAULT_LOG_FORMAT_CHALK = `${DEFAULT_LOG_FORMAT}`.replace(/\{/g, "\\{").replace(/\}/g, "\\}");
+console.log(DEFAULT_LOG_FORMAT_CHALK)
+const DEFAULT_LOG_FILE_FORMAT = `{{date log.eventTime "YYYY-MM-DD HH:mm:ss,SSS"}} {{log.recordType}} [{{log.threadName}}] {{logLevel log.logLevel}} {{log.logger}} - {{log.message}} {{log.stackStrace}}`;
 
 const APPLICATION_COLORS = [chalk.green, chalk.magenta, chalk.cyan, chalk.greenBright, chalk.magentaBright, chalk.cyanBright];
 
@@ -60,6 +92,11 @@ const optionsDefinitions = [
     description: "Use different uuLostoreBaseUri than default."
   },
   ...commonOptionsDefinitionsWithPresent,
+  {
+    name: "format",
+    type: String,
+    description: "Format of log message as handlebars expression."
+  },
   {
     name: 'apps',
     defaultOption: true,
@@ -107,7 +144,63 @@ const help = [
     ]
   },
   {
-    header: "How does apps selection Work ?",
+    header: "How does formatting work ?",
+    content: `In case that you are not satisfied with default log record print format, you can specify custom format using option --format.
+              The formatting of log records is done using Handlebars with following extensions:
+              * inclusion of handlebars-helpers (https://github.com/helpers/handlebars-helpers)
+              * 2 custom helpers
+                * loglevel - provides color formatting of log level
+                * subAppCode - provides formatting of appDeploymentUri to colorized sub application code  
+              
+              Each log record has following fields which you can use in format:
+              
+              Common fields
+              * appVersion - version of subApp
+              * runtimeStackCode - code of runtime stack
+              * UUCloudResourcePoolUri - uri of resource pool
+              * resourceGroupCode - name of resource group
+              * hostName - name of host
+              * appDeploymentUri - uri of application deployment. Most likely you will use this with subAppCode handlebars helper
+              * eventTime - time of event as JS date. Most likely you will use this with date handlebars helper
+              * id - id of log record
+              * nodeImageName
+              * traceId - id of request from http header X-Request-ID, calls from subApp to another subApp usually has same traceId so it can be used to trace 
+                          the request though multiple subApps
+              * logLevel - level o log record. Most likely you will use this with logLevel handlebars helper
+              * nodeName - uuNode name
+              * message - log message
+              * recordType - type of log record usually ACCESS_LOG or TRACE_LOG        
+              
+              TRACE_LOG fields
+              * logger - name of logger
+              * threadId - id of thread
+              * threadName - name of thread
+              * processId
+              * clientId - oidc client id (btw. this is usually awid/asid code)
+              * resourceUri - path of command
+              * sessionId
+              * identityId - uid of logged identity
+              
+                            
+              ACCESS_LOG fields
+              * remoteIpAddress - ip address of source (however it seems as internal ip of uucloud)                    
+              * requestLine - information about request (method, path)
+              * responseSize - size of response 
+              * userAgent - http client user agent
+              * responseStatus - status of http response`
+
+  },
+  {
+    header: "Format examples",
+    content: [
+      {
+        example: DEFAULT_LOG_FORMAT_CHALK,
+        description: "Default format."
+      }
+    ]
+  },
+  {
+    header: "How does apps selection work ?",
     content: `Apps selection works using 3 mechanisms. You can combine all of them together.
               1) {bold Specify uuAppDeploymentUri}
               In this mode you identify uuApps by specifying their full deployment uri. You can obtain the uri from deployment configuration of the application. Only this mode works with -n.
@@ -128,7 +221,7 @@ const help = [
               {bold dev1} = All uuApps in resource pool with tag dev1.
               {bold dev1 dev2} = All uuApps in resource pool with tag dev1 OR dev2.
               {bold dev1,odm dev1,control} = All uuApps in resource pool with tags (dev1 AND odm) OR (dev1 AND control).`
-  }
+  },
 ];
 
 class LogsTask {
@@ -263,9 +356,10 @@ class LogsTask {
     }
     let uuLogStore = new UuLogStore(config);
     let appDeploymentUris = apps.map(app => app.appDeploymentUri);
-    let appsFormat = this._prepareApplicationFormat(apps);
+    //tail logs cannot be with --output
+    let appsFormat = this._prepareApplicationFormat(apps, true);
     // let logs = await uuLogStore.getLogs(appDeploymentUri, from,null, logs => logs.forEach(formatLogRecord));
-    await uuLogStore.tailLogs(appDeploymentUris, (logs) => this._printLogs(logs, appsFormat));
+    await uuLogStore.tailLogs(appDeploymentUris, (logs) => this._printLogs(logs, appsFormat, options.format));
   }
 
   async getLog(apps, from, to, options) {
@@ -278,54 +372,38 @@ class LogsTask {
       config.logStoreUri = options["log-store-uri"];
     }
     let uuLogStore = new UuLogStore(config);
+    let appsFormat = this._prepareApplicationFormat(apps, !!options.output);
     if (options.output) {
       let outputDir = path.resolve(this._opts.currentDir, options.output);
       await mkdirp(outputDir);
-      let promises = apps.map((app) => uuLogStore.getLogs(app.appDeploymentUri, from, to, (logs) => this._storeLogs(outputDir, app, logs)));
+      let promises = apps.map(
+          (app) => uuLogStore.getLogs(app.appDeploymentUri, from, to, (logs) => this._storeLogs(outputDir, app, appsFormat, options.format, logs)));
       await Promise.all(promises);
       console.log(`All logs has been exported to ${outputDir}`);
     } else {
       let appDeploymentUris = apps.map(app => app.appDeploymentUri);
-      let appsFormat = this._prepareApplicationFormat(apps);
       // let logs = await uuLogStore.getLogs(appDeploymentUri, from,null, logs => logs.forEach(formatLogRecord));
-      await uuLogStore.getLogs(appDeploymentUris[0], from, to, (logs) => this._printLogs(logs, appsFormat));
+      await uuLogStore.getLogs(appDeploymentUris[0], from, to, (logs) => this._printLogs(logs, appsFormat, options.format));
     }
   }
 
-  _storeLogs(output, app, logs) {
+  _storeLogs(output, app, appsFormat, format, logs) {
     let uesUri = UESUri.parse(app.appDeploymentUri);
     let filename = `${uesUri.object.code || ""}-${uesUri.object.id}.log`;
     let file = path.resolve(output, filename);
-    console.debug(`Storing ${logs.length} for app ${uesUri.object.code  } into file ${file}`);
-    fs.appendFileSync(file, logs.map(logRecord => this._formatLogRecordForFile(logRecord)).join("\n").trim(),"utf8");
+    console.debug(`Storing ${logs.length} for app ${uesUri.object.code} into file ${file}`);
+    fs.appendFileSync(file, logs.map(logRecord => this._formatLogRecordForFile(logRecord, appsFormat, format)).join("\n").trim(), "utf8");
   }
 
-  _formatLogLevel(logLevel) {
-    switch (logLevel) {
-      case "ERROR":
-        return chalk.red(logLevel);
-      case "WARNING":
-        return chalk.yellow(logLevel);
-      case "INFO":
-        return chalk.cyan(logLevel);
-      default:
-        return logLevel;
-    }
-  }
-
-  _formatApplication(r, apps) {
-    if (apps[r.appDeploymentUri]) {
-      return apps[r.appDeploymentUri].code;
-    } else {
-      return "UNKNOWN.APP | ";
-    }
-  }
-
-  _prepareApplicationFormat(apps) {
+  _prepareApplicationFormat(apps, withColour) {
     let maxLength = apps.reduce((acc, app) => app.code.length > acc ? app.code.length : acc, 0);
     apps = apps.map((app, index) => {
       app.code = app.code.padEnd(maxLength, " ");
-      app.code = APPLICATION_COLORS[index % APPLICATION_COLORS.length](app.code + " | ");
+      if (withColour) {
+        app.code = APPLICATION_COLORS[index % APPLICATION_COLORS.length](app.code + " |");
+      } else {
+        app.code = app.code + " |";
+      }
       return app;
     });
     apps = apps.reduce((acc, app) => {
@@ -335,23 +413,29 @@ class LogsTask {
     return apps;
   }
 
-  _formatLogRecordForFile(r) {
-    //@formatter:off
-    return `${dateUtils.format(r.eventTime, "YYYY-MM-DD HH:mm:ss.SSS")} ${r.recordType} [${r.threadName||""}] ${r.logLevel} ${r.logger||""} - ${r.message} ${r.stackTrace||""}`;
-    //@formatter:on
+  _formatLogRecordForFile(r, appsFormat, format) {
+    return this._formatLogRecordInternal(r, appsFormat, {withColour: true, defaultFormat: DEFAULT_LOG_FILE_FORMAT, format});
   }
 
-  _formatLogRecord(r, apps) {
-    //20:49:42.221 [main] DEBUG usy.libra.dataflowgw.SubAppRunner - Running with Spring Boot v1.5.7.RELEASE, Spring v4.3.11.RELEASE
-    //@formatter:off
-    return `${this._formatApplication(r, apps)}${dateUtils.format(r.eventTime, "YYYY-MM-DD HH:mm:ss.SSS")} ${r.recordType} [${r.threadName||""}] ${this._formatLogLevel(r.logLevel)} ${r.logger||""} - ${r.message} ${r.stackTrace||""}`;
-    //@formatter:on
+  _formatLogRecord(r, apps, format) {
+    return this._formatLogRecordInternal(r, apps, {withColour: true, defaultFormat: DEFAULT_LOG_FORMAT, format});
   }
 
-  _printLogs(logs, apps) {
-    logs.length > 0 && console.log(logs.map(logRecord => this._formatLogRecord(logRecord, apps)).join("\n").trim());
+  _formatLogRecordInternal(r, apps, {withColour, format, defaultFormat}) {
+    console.log(format);
+    let context = {
+      _appsFormat: apps,
+      withColour,
+      log: r
+    };
+    let pattern = format || defaultFormat;
+    let template = Handlebars.compile(pattern, {noEscape: true});
+    return template(context);
   }
 
+  _printLogs(logs, apps, format) {
+    logs.length > 0 && console.log(logs.map(logRecord => this._formatLogRecord(logRecord, apps, format)).join("\n").trim());
+  }
 }
 
 module.exports = LogsTask;
