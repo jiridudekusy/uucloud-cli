@@ -2,9 +2,10 @@ const commandLineUsage = require("command-line-usage");
 const commandLineArgs = require("command-line-args");
 const Config = require("../misc/config");
 
+
 class TaskUtils {
 
-  constructor(optionsDefinition, help){
+  constructor(optionsDefinition, help) {
     this._optionsDefinition = optionsDefinition;
     this._help = help;
   }
@@ -17,8 +18,8 @@ class TaskUtils {
     return options;
   }
 
-  mergeWithConfig(options, present){
-    if(present) {
+  mergeWithConfig(options, present) {
+    if (present) {
       let presentClone = Object.assign({}, present);
       delete presentClone.mocks;
       return Object.assign(presentClone, options);
@@ -35,20 +36,20 @@ class TaskUtils {
     process.exit(exitCode);
   }
 
-  testOption(test, errorMessage){
-    if(!test){
+  testOption(test, errorMessage) {
+    if (!test) {
       this.printOtionsErrorAndExit(errorMessage);
     }
   }
 
-  printOtionsErrorAndExit(errorMessage){
+  printOtionsErrorAndExit(errorMessage) {
     console.error(errorMessage);
     this.printHelpAndExit(2);
   }
 
-  loadPresent(options){
-    if(options.present){
-      if(Config.all.presents && Config.all.presents[options.present]){
+  loadPresent(options) {
+    if (options.present) {
+      if (Config.all.presents && Config.all.presents[options.present]) {
         return Config.all.presents[options.present];
       }
       this.printOtionsErrorAndExit(`Present "${options.present}" has not been found`);

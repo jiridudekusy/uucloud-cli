@@ -2,6 +2,7 @@ const currentDir = process.cwd();
 const LogsTask = require("./tasks/logs");
 const PsTask = require("./tasks/ps");
 const UseTask = require("./tasks/use");
+const DeployTask = require("./tasks/deploy");
 const commandLineArgs = require('command-line-args');
 const commandLineUsage = require('command-line-usage');
 
@@ -21,7 +22,8 @@ const sections = [
       { name: 'help', summary: 'Display this help.' },
       { name: 'use', summary: 'Sets up default parameter values.' },
       { name: 'ps', summary: 'Displays list of deployed uuApps.' },
-      { name: 'logs', summary: 'Fetch the logs of one or more uuApps' }
+      { name: 'logs', summary: 'Fetch the logs of one or more uuApps' },
+      { name: 'deploy', summary: 'Deploy uuSubApp' }
     ]
   }
 ];
@@ -42,6 +44,8 @@ async function execute() {
     task = new LogsTask(opts);
   } else if(mainOptions.command === "use"){
     task = new UseTask(opts);
+  } else if(mainOptions.command === "deploy"){
+    task = new DeployTask(opts);
   }
 
   if (!task) {
