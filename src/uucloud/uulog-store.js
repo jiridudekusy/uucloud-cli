@@ -239,6 +239,7 @@ class UuLogStore {
     } catch (e) {
       message = correctJson(message, "message", "traceId");
       message = correctJson(message, "stackTrace");
+      message = message.replace(/\n/g,"\\n");
       return JSON.parse(message);
     }
   }
