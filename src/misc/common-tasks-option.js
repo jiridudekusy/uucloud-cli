@@ -1,4 +1,6 @@
 const UESUri = require("../misc/ues-uri");
+const {LoggerFactory} = require("uu_appg01_core-logging");
+const {Config} = require("uu_appg01_core-utils");
 
 const commonOptionsDefinitionsAuthentication = [
   {
@@ -18,6 +20,12 @@ const commonOptionsDefinitionsAuthentication = [
     alias: "h",
     type: Boolean,
     description: "Displays this help."
+  },
+  {
+    name: "verbose",
+    alias: "v",
+    type: Boolean,
+    description: "Display debug output"
   }
 ];
 
@@ -42,6 +50,10 @@ const commonOptionsDefinitionsWithPresent = [
 ];
 
 function verifyCommonOptionsDefinitionsAuthentication(options, taskUtils) {
+  if (options.verbose) {
+    Config.set("log_level","DEBUG");
+    LoggerFactory.configureAll();
+  }
   if (options.authentication) {
     taskUtils.testOption(["browser", "vault", "interactive"].indexOf(options.authentication) > -1, "Invalid authentication.");
     if (options.authentication === "browser") {

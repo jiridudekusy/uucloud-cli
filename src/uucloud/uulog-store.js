@@ -16,11 +16,11 @@ class UuLogStore {
   constructor(config) {
     this._config = config;
     this._appClient = new AppClient(config.oidcToken);
-    if(!this._config.logStoreUri){
-      this._config.logStoreUri = this._appClient.logstoreBaseUri+"/uu-logstore/";
+    if (!this._config.logStoreUri) {
+      this._config.logStoreUri = this._appClient.logstoreBaseUri + "/uu-logstore/";
     }
-    if(!this._config.logStoreUri.endsWith("/")){
-      this._config.logStoreUri+="/";
+    if (!this._config.logStoreUri.endsWith("/")) {
+      this._config.logStoreUri += "/";
     }
   }
 
@@ -79,9 +79,10 @@ class UuLogStore {
       }
       if (to && response.logs && response.logs.length > 0) {
         to = new Date(response.logs[0].time);
-        to = response.logs.reduce((newTo, r) => {
+        //Hotfix : remove UuC3::Helper::ProgressMonitor logs from calculation of ne "to" timestamp, since it is in wgonr timezone.
+        to = response.logs.filter(r => r.logger != "UuC3::Helper::ProgressMonitor").reduce((newTo, r) => {
           let rTime = new Date(r.time)
-          if(rTime < newTo){
+          if (rTime < newTo) {
             return rTime;
           }
           return newTo;
@@ -95,7 +96,7 @@ class UuLogStore {
 
   async _getLogs(appDeploymentUri, from, to, filterIds) {
     if (from && to) {
-      logger.debug(`Fetching log records ${from} - ${to}`);
+      logger.debug(`Fetching log records ${from.toISOString()} - ${to.toISOString()}`);
     }
     let query = new Map();
     from && query.set("from", from.toISOString());

@@ -1,7 +1,7 @@
 {
   "name": "uucloud-cli",
   "license": "MIT",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "repository": {
     "type": "git",
     "url": "https://github.com/jiridudekusy/uucloud-cli.git"
@@ -27,7 +27,8 @@
     "moment": "^2.23.0",
     "mkdirp": "^0.5.1",
     "read": "^1.0.7",
-    "oidc-plus4u-vault": "^0.3.2"
+    "oidc-plus4u-vault": "^0.3.2",
+    "await-sleep": "^0.0.1"
   },
   "devDependencies": {
     "jest": "^23.6.0",
