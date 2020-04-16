@@ -160,6 +160,8 @@ class UuLogStore {
       } catch (e) {
         logRecord.eventTime = new Date(logRecord.time);
       }
+    } else if (logRecord.eventTime.endsWith("Z")) {
+      logRecord.eventTime = new Date(logRecord.eventTime);
     } else {
       //logRecord.eventTime format is 2019-01-19T12:10:06,734
       try {
