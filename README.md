@@ -2,7 +2,13 @@ This tool allows to execute various operations on uuCloud using CLI.
 
 # How to install and update ?
 
-`npm install --registry "https://repo.plus4u.net/repository/npm/" -g uucloud-cli@latest`
+## Linux and MacOS
+`npm install --registry "https://repo.plus4u.net/repository/npm/" -g $(npm v --registry http://registry.npmjs.com uucloud-cli dist.tarball)`
+
+## Windows
+
+1. `npm v --registry http://registry.npmjs.com uucloud-cli dist.tarball)`
+2. `npm install --registry "https://repo.plus4u.net/repository/npm/" -g {archive url from previous command}`
 
 # How to use ?
 
