@@ -1,8 +1,0 @@
-const PsTask = require("../src/tasks/ps");
-const nock = require("nock");
-
-test("ps", () => {
-  let task = new PsTask();
-  task.execute();
-});
-
