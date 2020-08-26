@@ -4,7 +4,10 @@ const PsTask = require("./tasks/ps");
 const UseTask = require("./tasks/use");
 const commandLineArgs = require('command-line-args');
 const commandLineUsage = require('command-line-usage');
+const updateNotifier = require('update-notifier');
+const pkg = require('../package.json');
 
+updateNotifier({pkg}).notify({isGlobal: true});
 
 const sections = [
   {
