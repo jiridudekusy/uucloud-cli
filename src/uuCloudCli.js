@@ -7,7 +7,14 @@ const commandLineUsage = require('command-line-usage');
 const updateNotifier = require('update-notifier');
 const pkg = require('../package.json');
 
-updateNotifier({pkg}).notify({isGlobal: true});
+const keypress = async () => {
+  process.stdin.setRawMode(true)
+  return new Promise(resolve => process.stdin.once('data', () => {
+    process.stdin.setRawMode(false)
+    process.stdin.pause()
+    resolve()
+  }))
+}
 
 const sections = [
   {
@@ -30,6 +37,12 @@ const sections = [
 ];
 
 async function execute() {
+  let notifier = updateNotifier({pkg});
+  if(notifier.update && process.stdout.isTTY && notifier.update.current != notifier.update.latest){
+    notifier.notify({isGlobal: true, defer: false});
+    console.log("Press any key to continue...");
+    await keypress();
+  }
 
   const mainDefinitions = [
     {name: 'command', defaultOption: true}

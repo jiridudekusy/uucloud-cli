@@ -14,6 +14,7 @@ const {promisify} = require('util');
 const mkdirp = promisify(require('mkdirp'));
 const path = require("path");
 const fs = require("fs");
+const {compileExpression} = require("filtrex");
 const Handlebars = require("handlebars");
 const helpers = require("handlebars-helpers")({
   handlebars: Handlebars
@@ -45,11 +46,14 @@ Handlebars.registerHelper("logLevel", (logLevel, options) => {
 });
 
 const DEFAULT_LOG_FORMAT = `{{subAppCode log.appDeploymentUri}} {{date log.eventTime 'YYYY-MM-DD HH:mm:ss,SSS'}} {{log.recordType}} [{{log.threadName}}] {{logLevel log.logLevel}} {{log.logger}} - {{log.message}} {{log.stackStrace}}`;
-const DEFAULT_LOG_FORMAT_CHALK = `${DEFAULT_LOG_FORMAT}`.replace(/\{/g, "\\{").replace(/\}/g, "\\}");
-console.log(DEFAULT_LOG_FORMAT_CHALK)
 const DEFAULT_LOG_FILE_FORMAT = `{{date log.eventTime "YYYY-MM-DD HH:mm:ss,SSS"}} {{log.recordType}} [{{log.threadName}}] {{logLevel log.logLevel}} {{log.logger}} - {{log.message}} {{log.stackStrace}}`;
 
+
 const APPLICATION_COLORS = [chalk.green, chalk.magenta, chalk.cyan, chalk.greenBright, chalk.magentaBright, chalk.cyanBright];
+
+function escapeChalk(text){
+  return text.replace(/([\\{}"])/g, "\\$1")
+}
 
 const optionsDefinitions = [
   {
@@ -69,12 +73,6 @@ const optionsDefinitions = [
     type: String,
     description: "Show logs since timestamp (e.g. 2013-01-02T13:23:37) or relative (e.g. 42m for 42 minutes or 2h for 2 hours)."
   },
-  //TODO not supported yet
-  // {
-  //   name: "tail",
-  //   type: Number,
-  //   description: "Number of lines to show from the end of the logs (default 2000)."
-  // },
   {
     name: "until",
     type: String,
@@ -91,12 +89,22 @@ const optionsDefinitions = [
     type: String,
     description: "Use different uuLostoreBaseUri than default."
   },
-  ...commonOptionsDefinitionsWithPresent,
   {
     name: "format",
     type: String,
     description: "Format of log message as handlebars expression."
   },
+  {
+    name: "codec",
+    type: String,
+    description: "Format od result. Supported values : \"json\" or \"formatted\"(default)",
+  },
+  {
+    name: "filter",
+    type: String,
+    description: "Filter log records."
+  },
+  ...commonOptionsDefinitionsWithPresent,
   {
     name: 'apps',
     defaultOption: true,
@@ -184,8 +192,12 @@ const help = [
                             
               ACCESS_LOG fields
               * remoteIpAddress - ip address of source (however it seems as internal ip of uucloud)                    
-              * requestLine - information about request (method, path)
+              * requestLine - information about request (method, path) - only NodeJS
+              * urlPath - request path - only Java
+              * requestMethod - request http method - only Java
+              * requestSize - size of request - only Java
               * responseSize - size of response 
+              * responseTime - response time of request - only Java              * 
               * userAgent - http client user agent
               * responseStatus - status of http response`
 
@@ -194,8 +206,35 @@ const help = [
     header: "Format examples",
     content: [
       {
-        example: DEFAULT_LOG_FORMAT_CHALK,
+        example: escapeChalk(`uucloud logs -f ues:ABC:DEF:GHI --format "${DEFAULT_LOG_FORMAT}"`),
         description: "Default format."
+      }
+    ]
+  },
+  {
+    header: "How does filtering work ?",
+    content: `In case that you need to find some specific set of log records, you can use --filter option.
+    Filtering is realized using filtrex (https://www.npmjs.com/package/filtrex) and you can use all documented functions to filter log records.
+
+    To get list of all log record fields please log in section "How does formatting work ?". For filtering you should not use "log." as prefix before field.
+
+    Please note that filtering is not function of uuLogStore, but it is done on your machine. This means tha if you are trying to find one specific record
+    in logs for the whole week, all those logs must be fetched from uuLogStore and filtered on your machine and it could take some time.`
+  },
+  {
+    header: "Format and filtering examples",
+    content: [
+      {
+        example: escapeChalk(String.raw`uucloud logs -f ues:ABC:DEF:GHI --filter "recordType == \"ACCESS_LOG\"" --format "{{date log.eventTime 'YYYY-MM-DD HH:mm:ss,SSS'}} {{log.requestLine}}"`),
+        description: "Print all access log reqcords (works for nodejs only)."
+      },
+      {
+        example: escapeChalk(String.raw`uucloud logs -f ues:ABC:DEF:GHI --filter "recordType == \"ACCESS_LOG\" and responseTime > 1000" --format "{{date log.eventTime 'YYYY-MM-DD HH:mm:ss,SSS'}} {{log.urlPath}} {{log.responseTime}}"`),
+        description: "Print all access log records with responseTime > 1000ms (works for Java only)."
+      },
+      {
+        example: escapeChalk(String.raw`uucloud logs -f ues:ABC:DEF:GHI --filter "logLevel == \"ERROR\""`),
+        description: "Print all ERRORS."
       }
     ]
   },
@@ -205,18 +244,18 @@ const help = [
               1) {bold Specify uuAppDeploymentUri}
               In this mode you identify uuApps by specifying their full deployment uri. You can obtain the uri from deployment configuration of the application. Only this mode works with -n.
               2) {bold Specify asid or part of it}
-              This mode works very similar to docker command but instead of container id you are using asid. You can find asid in output of uucloud ps. It is not required to specify full asid. It is enough to write just few starting characters. 
-              
+              This mode works very similar to docker command but instead of container id you are using asid. You can find asid in output of uucloud ps. It is not required to specify full asid. It is enough to write just few starting characters.
+
               3) {bold Specify tags}
               This is most comfortable way how to specify uuApps, but it requires changes in deployment configuration. Any app can have in ints deployment configuration following property :
-              tags:"<tag1>,<tag2>,<tag3>" 
-              
-              Any number of tags can be specified, however thay have to be alphanumeric and separated by comma. 
-              
-              In uucloud ps  you can see tags assigned to the application and you can use them to query the logs using following principles. 
+              tags:"<tag1>,<tag2>,<tag3>"
+
+              Any number of tags can be specified, however thay have to be alphanumeric and separated by comma.
+
+              In uucloud ps  you can see tags assigned to the application and you can use them to query the logs using following principles.
               * comma means and
               * space means or
-              
+
               {underline Examples}:
               {bold dev1} = All uuApps in resource pool with tag dev1.
               {bold dev1 dev2} = All uuApps in resource pool with tag dev1 OR dev2.
@@ -239,6 +278,7 @@ class LogsTask {
     if (options.follow && (options.since || options.tail || options.until)) {
       this._taskUtils.printOtionsErrorAndExit("You can either use follow or other options");
     }
+    this._taskUtils.testOption(["json", "formatted"].indexOf(options.codec) > -1, "Invalid codec.");
     let present = this._taskUtils.loadPresent(options);
     let apps;
     options = this._taskUtils.mergeWithConfig(options, present);
@@ -251,10 +291,14 @@ class LogsTask {
     } else {
       apps = this._getAppsFromParams(options.apps);
     }
+    let filterFn = () => true;
+    if (options.filter) {
+      filterFn = compileExpression(options.filter);
+    }
     if (options.follow) {
       this._taskUtils.testOption(!options.output, "You cannot uses output together with follow.");
       console.log(apps.map(app => "Following logs for application : " + app.appDeploymentUri).join("\n"));
-      await this.followLog(apps, options);
+      await this.followLog(apps, filterFn, options);
     } else {
       let from;
       let now = new Date();
@@ -280,7 +324,7 @@ class LogsTask {
       if (!options.output) {
         this._taskUtils.testOption(apps.length === 1, "You can follow logs up to 10 applications, but you can list history logs only for 1.");
       }
-      await this.getLog(apps, from, to, options);
+      await this.getLog(apps, from, to, filterFn, options);
     }
   }
 
@@ -345,7 +389,7 @@ class LogsTask {
     return apps;
   }
 
-  async followLog(apps, options) {
+  async followLog(apps, filterFn, options) {
     let token = await new OidcTokenProvider().getToken(options);
 
     let config = {
@@ -359,10 +403,10 @@ class LogsTask {
     //tail logs cannot be with --output
     let appsFormat = this._prepareApplicationFormat(apps, true);
     // let logs = await uuLogStore.getLogs(appDeploymentUri, from,null, logs => logs.forEach(formatLogRecord));
-    await uuLogStore.tailLogs(appDeploymentUris, (logs) => this._printLogs(logs, appsFormat, options.format));
+    await uuLogStore.tailLogs(appDeploymentUris, (logs) => this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format));
   }
 
-  async getLog(apps, from, to, options) {
+  async getLog(apps, from, to, filterFn, options) {
     let token = await new OidcTokenProvider().getToken(options);
 
     let config = {
@@ -377,17 +421,17 @@ class LogsTask {
       let outputDir = path.resolve(this._opts.currentDir, options.output);
       await mkdirp(outputDir);
       let promises = apps.map(
-          (app) => uuLogStore.getLogs(app.appDeploymentUri, from, to, (logs) => this._storeLogs(outputDir, app, appsFormat, options.format, logs)));
+          (app) => uuLogStore.getLogs(app.appDeploymentUri, from, to, (logs) => this._storeLogs(outputDir, app, appsFormat, options.codec, options.format, logs.filter(filterFn))));
       await Promise.all(promises);
       console.log(`All logs has been exported to ${outputDir}`);
     } else {
       let appDeploymentUris = apps.map(app => app.appDeploymentUri);
       // let logs = await uuLogStore.getLogs(appDeploymentUri, from,null, logs => logs.forEach(formatLogRecord));
-      await uuLogStore.getLogs(appDeploymentUris[0], from, to, (logs) => this._printLogs(logs, appsFormat, options.format));
+      await uuLogStore.getLogs(appDeploymentUris[0], from, to, (logs) => this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format));
     }
   }
 
-  _storeLogs(output, app, appsFormat, format, logs) {
+  _storeLogs(output, app, appsFormat, codec, format, logs) {
     let uesUri = UESUri.parse(app.appDeploymentUri);
     let filename = `${uesUri.object.code || ""}-${uesUri.object.id}.log`;
     let file = path.resolve(output, filename);
@@ -413,16 +457,18 @@ class LogsTask {
     return apps;
   }
 
-  _formatLogRecordForFile(r, appsFormat, format) {
-    return this._formatLogRecordInternal(r, appsFormat, {withColour: true, defaultFormat: DEFAULT_LOG_FILE_FORMAT, format});
+  _formatLogRecordForFile(r, appsFormat, codec, format) {
+    return this._formatLogRecordInternal(r, appsFormat, {withColour: true, defaultFormat: DEFAULT_LOG_FILE_FORMAT, format, codec});
   }
 
-  _formatLogRecord(r, apps, format) {
-    return this._formatLogRecordInternal(r, apps, {withColour: true, defaultFormat: DEFAULT_LOG_FORMAT, format});
+  _formatLogRecord(r, apps, codec, format) {
+    return this._formatLogRecordInternal(r, apps, {withColour: true, defaultFormat: DEFAULT_LOG_FORMAT, format, codec});
   }
 
-  _formatLogRecordInternal(r, apps, {withColour, format, defaultFormat}) {
-    console.log(format);
+  _formatLogRecordInternal(r, apps, {withColour, format, defaultFormat, codec}){
+    if(codec === "json") {
+      return JSON.stringify(r, null, 2)+",";
+    }
     let context = {
       _appsFormat: apps,
       withColour,
@@ -433,8 +479,8 @@ class LogsTask {
     return template(context);
   }
 
-  _printLogs(logs, apps, format) {
-    logs.length > 0 && console.log(logs.map(logRecord => this._formatLogRecord(logRecord, apps, format)).join("\n").trim());
+  _printLogs(logs, apps, codec, format) {
+    logs.length > 0 && console.log(logs.map(logRecord => this._formatLogRecord(logRecord, apps, codec, format)).join("\n").trim());
   }
 }
 
