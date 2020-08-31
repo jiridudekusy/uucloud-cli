@@ -165,7 +165,7 @@ class UuLogStore {
     } else {
       //logRecord.eventTime format is 2019-01-19T12:10:06,734
       try {
-        logRecord.eventTime = moment(logRecord.eventTime, "YYYY-MM-DDTHH:mm:ss,SSS").toDate();
+        logRecord.eventTime = moment(logRecord.eventTime, "YYYY-MM-DDTHH:mm:ss,SSSZ").toDate();
       } catch (e) {
         logRecord.eventTime = new Date(logRecord.time);
       }
