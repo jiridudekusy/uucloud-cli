@@ -3,11 +3,17 @@ This tool allows to execute various operations on uuCloud using CLI.
 # How to install and update ?
 
 ## Linux and MacOS
+### Stable
 `npm install --registry "https://repo.plus4u.net/repository/npm/" -g $(npm v --registry http://registry.npmjs.com uucloud-cli dist.tarball)`
+### Beta
+`npm install --registry "https://repo.plus4u.net/repository/npm/" -g $(npm v --registry http://registry.npmjs.com uucloud-cli@beta dist.tarball)`
 
 ## Windows
-
+### Stable
 1. `npm v --registry http://registry.npmjs.com uucloud-cli dist.tarball)`
+2. `npm install --registry "https://repo.plus4u.net/repository/npm/" -g {archive url from previous command}`
+### Beta 
+1. `npm v --registry http://registry.npmjs.com uucloud-cli@beta dist.tarball)`
 2. `npm install --registry "https://repo.plus4u.net/repository/npm/" -g {archive url from previous command}`
 
 # How to use ?
@@ -29,9 +35,23 @@ For example:
 # How to use presents ? 
 
    
+# Release Notes
+
+0.6.0-beta.2
+------------
+- Add automatic checking for new versions.
+- Add `codec` parameter to **ps** command.
+- Add `codec` parameter to **logs** command.
+- Add filtering using `filter` parameter to **logs** command.
+- Add custom formatting using `format` parameter to **logs** command.
+
 
 # How to develop ?
 
-Publish to npmjs: 
+Publish stable to npmjs: 
 
 `npm publish --registry http://registry.npmjs.com`
+
+Publish beta to npmjs: 
+
+`npm publish --registry http://registry.npmjs.com --tag beta`
