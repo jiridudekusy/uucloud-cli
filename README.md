@@ -37,7 +37,7 @@ For example:
    
 # Release Notes
 
-0.6.0-beta.2
+0.6.0
 ------------
 - Add automatic checking for new versions.
 - Add `codec` parameter to **ps** command.
