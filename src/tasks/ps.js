@@ -72,14 +72,15 @@ class PsTask {
 
   _printTable(deployList) {
     let table = new Table({
-      head: ["asid", "uuSubApp", "Tags", "Node size", "Node Count"],
-      colWidths: [36, 50, 20, 12, 13]
+      head: ["asid", "uuSubApp", "Version", "Tags", "Node size", "Node Count"],
+      colWidths: [34, 50, 20, 20, 12, 13]
     });
 
     deployList.pageEntries.forEach(entry => {
       let record = {};
       record.code = entry.code;
       record.asid = entry.asid;
+      record.version = entry.version;
       //FIXME: asi jich muze byt vice, nebo zadna
       if (entry.config && entry.config.deployUnits && entry.config.deployUnits[0]) {
         record.nodeSize = entry.config.deployUnits[0].nodeSize;
@@ -94,7 +95,7 @@ class PsTask {
       if (entry.config.deploymentTimeConfig && entry.config.deploymentTimeConfig.tags) {
         record.tags = entry.config.deploymentTimeConfig.tags;
       }
-      table.push([record.asid, record.code, record.tags, record.nodeSize, record.nodeCount]);
+      table.push([record.asid, record.code, record.version, record.tags, record.nodeSize, record.nodeCount]);
     });
 
     console.log(table.toString());
