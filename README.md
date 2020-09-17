@@ -37,8 +37,13 @@ For example:
    
 # Release Notes
 
+0.7.0
+-----
+- add version to **ps** command.
+
+
 0.6.0
-------------
+-----
 - Add automatic checking for new versions.
 - Add `codec` parameter to **ps** command.
 - Add `codec` parameter to **logs** command.
