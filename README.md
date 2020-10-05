@@ -37,6 +37,10 @@ For example:
    
 # Release Notes
 
+0.7.1
+-----
+- Bugfix: Show stacktrace in default output format. (fixed typo)  
+
 0.7.0
 -----
 - add version to **ps** command.
