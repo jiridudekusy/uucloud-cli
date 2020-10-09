@@ -37,6 +37,10 @@ For example:
    
 # Release Notes
 
+0.7.2
+-----
+- Increase logs fetch retry count to 10 and logging of retries 
+
 0.7.1
 -----
 - Bugfix: Show stacktrace in default output format. (fixed typo)  

@@ -53,6 +53,9 @@ function verifyCommonOptionsDefinitionsAuthentication(options, taskUtils) {
   if (options.verbose) {
     Config.set("log_level","DEBUG");
     LoggerFactory.configureAll();
+  }else{
+    Config.set("log_level","WARN");
+    LoggerFactory.configureAll();
   }
   if (options.authentication) {
     taskUtils.testOption(["browser", "vault", "interactive"].indexOf(options.authentication) > -1, "Invalid authentication.");

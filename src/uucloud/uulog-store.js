@@ -187,9 +187,11 @@ class UuLogStore {
     try {
       return await this._appClient.exchange(url, method, params, headers);
     } catch (err) {
-      if (tryNumber > 3) {
+      if (tryNumber > 10) {
+        logger.error(`All retries has failed.`, err);
         throw err;
       }
+      logger.warn(`Request failed retrying #${tryNumber+1}....`)
       return await this._executeCommand(url, method, params, headers, ++tryNumber);
     }
   }
