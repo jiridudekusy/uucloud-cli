@@ -72,11 +72,11 @@ class PsTask {
 
   _printTable(deployList) {
     let table = new Table({
-      head: ["asid", "uuSubApp", "Version", "Tags", "Node size", "Node Count"],
-      colWidths: [34, 50, 20, 20, 12, 13]
+      head: ["asid", "uuSubApp", "Version", "Tags", "Node size", "Node Count", "CPU", "Memory"],
+      colWidths: [34, 50, 20, 20, 12, 13, 10, 10]
     });
 
-    deployList.pageEntries.forEach(entry => {
+    let records = deployList.pageEntries.map(entry => {
       let record = {};
       record.code = entry.code;
       record.asid = entry.asid;
@@ -88,16 +88,42 @@ class PsTask {
         record.nodeSize = "";
       }
       record.nodeCount = 0;
-      if (entry.nodeSets && entry.nodeSets[0]) {
-        record.nodeCount = entry.nodeSets[0].nodeCount;
+      if (entry.nodeSets) {
+        record.nodeCount = entry.nodeSets.reduce((count, nodeSet) => count + nodeSet.nodeCount, 0);
       }
+
       record.tags = "";
       if (entry.config.deploymentTimeConfig && entry.config.deploymentTimeConfig.tags) {
         record.tags = entry.config.deploymentTimeConfig.tags;
       }
-      table.push([record.asid, record.code, record.version, record.tags, record.nodeSize, record.nodeCount]);
+      record.cpu = 0;
+      record.memory = 0;
+      if (entry.allocatedCapacity) {
+        record.cpu = entry.allocatedCapacity.cpu;
+        record.memory = entry.allocatedCapacity.mem;
+      }
+      return record;
     });
-
+    let total = records.reduce((t, r) => {
+          t.nodeCount += r.nodeCount;
+          t.cpu += r.cpu;
+          t.memory += r.memory;
+          return t;
+        },
+        {
+          asid: "Total",
+          code: "",
+          version: "",
+          nodeSize: "",
+          nodeCount: 0,
+          tags: "",
+          cpu: 0,
+          memory: 0
+        }
+    )
+    records.push(total);
+    records.forEach(
+        record => table.push([record.asid, record.code, record.version, record.tags, record.nodeSize, record.nodeCount, record.cpu, record.memory]));
     console.log(table.toString());
   }
 }

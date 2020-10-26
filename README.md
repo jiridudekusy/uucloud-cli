@@ -37,6 +37,14 @@ For example:
    
 # Release Notes
 
+0.7.3
+-----
+- ps task:
+    - display correctly count (including spp)
+    - add allocated cpu and memory
+    - add total 
+
+
 0.7.2
 -----
 - Increase logs fetch retry count to 10 and logging of retries 
