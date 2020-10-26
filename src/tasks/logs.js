@@ -7,9 +7,10 @@ const commandLineUsage = require('command-line-usage');
 const UuCloud = require("../uucloud/uucloud");
 const UESUri = require("../misc/ues-uri");
 const parseRelativeDateTime = require("../misc/relative-date-parser");
-const {commonOptionsDefinitionsWithPresent, verifyCommonOptionsDefinitionsWithPresent} = require("../misc/common-tasks-option");
+const {commonOptionsDefinitionsWithPresentAndApps, verifyCommonOptionsDefinitionsWithPresent} = require("../misc/common-tasks-option");
 const Config = require("../misc/config");
 const TaskUtils = require("../misc/task-utils");
+const {filterAppDeployments} = require("../uucloud/uucloud-utils");
 const {promisify} = require('util');
 const mkdirp = promisify(require('mkdirp'));
 const path = require("path");
@@ -48,10 +49,9 @@ Handlebars.registerHelper("logLevel", (logLevel, options) => {
 const DEFAULT_LOG_FORMAT = `{{subAppCode log.appDeploymentUri}} {{date log.eventTime 'YYYY-MM-DD HH:mm:ss,SSS'}} {{log.recordType}} [{{log.threadName}}] {{logLevel log.logLevel}} {{log.logger}} - {{log.message}} {{log.stackTrace}}`;
 const DEFAULT_LOG_FILE_FORMAT = `{{date log.eventTime "YYYY-MM-DD HH:mm:ss,SSS"}} {{log.recordType}} [{{log.threadName}}] {{logLevel log.logLevel}} {{log.logger}} - {{log.message}} {{log.stackTrace}}`;
 
-
 const APPLICATION_COLORS = [chalk.green, chalk.magenta, chalk.cyan, chalk.greenBright, chalk.magentaBright, chalk.cyanBright];
 
-function escapeChalk(text){
+function escapeChalk(text) {
   return text.replace(/([\\{}"])/g, "\\$1")
 }
 
@@ -105,13 +105,7 @@ const optionsDefinitions = [
     type: String,
     description: "Filter log records."
   },
-  ...commonOptionsDefinitionsWithPresent,
-  {
-    name: 'apps',
-    defaultOption: true,
-    multiple: true,
-    description: "Definition of apps. It can be either complete appDeploymentUri(one or more), tags (one or more), asid(one or more) or start of it or any combination."
-  }
+  ...commonOptionsDefinitionsWithPresentAndApps
 ];
 
 const help = [
@@ -226,11 +220,13 @@ const help = [
     header: "Format and filtering examples",
     content: [
       {
-        example: escapeChalk(String.raw`uucloud logs -f ues:ABC:DEF:GHI --filter "recordType == \"ACCESS_LOG\"" --format "{{date log.eventTime 'YYYY-MM-DD HH:mm:ss,SSS'}} {{log.requestLine}}"`),
+        example: escapeChalk(
+            String.raw`uucloud logs -f ues:ABC:DEF:GHI --filter "recordType == \"ACCESS_LOG\"" --format "{{date log.eventTime 'YYYY-MM-DD HH:mm:ss,SSS'}} {{log.requestLine}}"`),
         description: "Print all access log reqcords (works for nodejs only)."
       },
       {
-        example: escapeChalk(String.raw`uucloud logs -f ues:ABC:DEF:GHI --filter "recordType == \"ACCESS_LOG\" and responseTime > 1000" --format "{{date log.eventTime 'YYYY-MM-DD HH:mm:ss,SSS'}} {{log.urlPath}} {{log.responseTime}}"`),
+        example: escapeChalk(
+            String.raw`uucloud logs -f ues:ABC:DEF:GHI --filter "recordType == \"ACCESS_LOG\" and responseTime > 1000" --format "{{date log.eventTime 'YYYY-MM-DD HH:mm:ss,SSS'}} {{log.urlPath}} {{log.responseTime}}"`),
         description: "Print all access log records with responseTime > 1000ms (works for Java only)."
       },
       {
@@ -338,30 +334,7 @@ class LogsTask {
       let uuCloud = new UuCloud({oidcToken});
       deployList = await uuCloud.getAppDeploymentList(resourcePoolUri);
     }
-    let filteredApps = deployList.pageEntries.filter(app => {
-      //if user specified whole deployment uri
-      if (appsIdentifiers.indexOf(app.uri) > -1) {
-        return true;
-      }
-      if (app.asid && appsIdentifiers.filter(appId => app.asid.startsWith(appId)).length > 0) {
-        return true;
-      }
-      if (app.config.deploymentTimeConfig && app.config.deploymentTimeConfig.tags) {
-        let appTags = app.config.deploymentTimeConfig.tags.split(",");
-        let matchedIdentifiers = appsIdentifiers.map(id => id.split(",")).filter(tags => {
-          for (let tag of tags) {
-            if (!appTags.includes(tag)) {
-              return false;
-            }
-          }
-          return true;
-        });
-        if (matchedIdentifiers.length > 0) {
-          return true;
-        }
-      }
-      return false;
-    });
+    let filteredApps = filterAppDeployments(deployList, appsIdentifiers);
 
     let apps = filteredApps.map(app => {
       return {
@@ -422,7 +395,8 @@ class LogsTask {
       let outputDir = path.resolve(this._opts.currentDir, options.output);
       await mkdirp(outputDir);
       let promises = apps.map(
-          (app) => uuLogStore.getLogs(app.appDeploymentUri, from, to, (logs) => this._storeLogs(outputDir, app, appsFormat, options.codec, options.format, logs.filter(filterFn))));
+          (app) => uuLogStore.getLogs(app.appDeploymentUri, from, to,
+              (logs) => this._storeLogs(outputDir, app, appsFormat, options.codec, options.format, logs.filter(filterFn))));
       await Promise.all(promises);
       console.log(`All logs has been exported to ${outputDir}`);
     } else {
@@ -466,9 +440,9 @@ class LogsTask {
     return this._formatLogRecordInternal(r, apps, {withColour: true, defaultFormat: DEFAULT_LOG_FORMAT, format, codec});
   }
 
-  _formatLogRecordInternal(r, apps, {withColour, format, defaultFormat, codec}){
-    if(codec === "json") {
-      return JSON.stringify(r, null, 2)+",";
+  _formatLogRecordInternal(r, apps, {withColour, format, defaultFormat, codec}) {
+    if (codec === "json") {
+      return JSON.stringify(r, null, 2) + ",";
     }
     let context = {
       _appsFormat: apps,

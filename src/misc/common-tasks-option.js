@@ -49,6 +49,18 @@ const commonOptionsDefinitionsWithPresent = [
   ...commonOptionsDefinitionsWithResourcePool
 ];
 
+const commonOptionsDefinitionsWithPresentAndApps = [
+  ...commonOptionsDefinitionsWithPresent,
+  {
+    name: 'apps',
+    defaultOption: true,
+    multiple: true,
+    description: "Definition of apps. It can be either complete appDeploymentUri(one or more), tags (one or more), asid(one or more) or start of it or any combination."
+  }
+]
+
+
+
 function verifyCommonOptionsDefinitionsAuthentication(options, taskUtils) {
   if (options.verbose) {
     Config.set("log_level","DEBUG");
@@ -82,6 +94,7 @@ module.exports = {
   commonOptionsDefinitionsAuthentication,
   commonOptionsDefinitionsWithResourcePool,
   verifyCommonOptionsDefinitionsAuthentication,
+  commonOptionsDefinitionsWithPresentAndApps,
   verifyCommonOptionsDefinitionsWithResourcePool,
   commonOptionsDefinitionsWithPresent,
   verifyCommonOptionsDefinitionsWithPresent

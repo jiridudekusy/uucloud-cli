@@ -1,12 +1,13 @@
 const Table = require('cli-table2');
 const OidcTokenProvider = require("../oidc-token-provider");
 const UuCloud = require("../uucloud/uucloud");
-const {commonOptionsDefinitionsWithPresent, verifyCommonOptionsDefinitionsWithPresent} = require("../misc/common-tasks-option");
+const {commonOptionsDefinitionsWithPresentAndApps, verifyCommonOptionsDefinitionsWithPresent} = require("../misc/common-tasks-option");
+const {filterAppDeployments} = require("../uucloud/uucloud-utils");
 const Config = require("../misc/config");
 const TaskUtils = require("../misc/task-utils");
 
 const optionsDefinitions = [
-  ...commonOptionsDefinitionsWithPresent,
+  ...commonOptionsDefinitionsWithPresentAndApps,
   {
     name: "codec",
     type: String,
@@ -60,7 +61,7 @@ class PsTask {
       deployList = await uuCloud.getAppDeploymentList(resourcePoolUri);
     }
     if (options.codec === "table") {
-      this._printTable(deployList);
+      this._printTable(deployList, options.apps);
     } else if (options.codec === "raw") {
       this._printRaw(deployList);
     }
@@ -70,48 +71,37 @@ class PsTask {
     console.log(JSON.stringify(deployList, null, 2));
   }
 
-  _printTable(deployList) {
+  _printTable(deployList, apps) {
     let table = new Table({
       head: ["asid", "uuSubApp", "Version", "Tags", "Node size", "Node Count", "CPU", "Memory"],
       colWidths: [34, 50, 20, 20, 12, 13, 10, 10]
     });
+    // let pageEntries
+    let pageEntries = deployList.pageEntries;
+    let filteredPageEntries = filterAppDeployments(deployList, apps);
+    let filteredRecords = filteredPageEntries.map(this._transformDeploymentEntry);
+    let allRecords = pageEntries.map(this._transformDeploymentEntry);
+    let totalFiltered = this._countTotal(filteredRecords,"Total filtered");
+    let totalAll = this._countTotal(allRecords, "Total");
+    if (totalAll.nodeCount != totalFiltered.nodeCount) {
+      filteredRecords.push(totalFiltered);
+    }
+    filteredRecords.push(totalAll);
 
-    let records = deployList.pageEntries.map(entry => {
-      let record = {};
-      record.code = entry.code;
-      record.asid = entry.asid;
-      record.version = entry.version;
-      //FIXME: asi jich muze byt vice, nebo zadna
-      if (entry.config && entry.config.deployUnits && entry.config.deployUnits[0]) {
-        record.nodeSize = entry.config.deployUnits[0].nodeSize;
-      } else {
-        record.nodeSize = "";
-      }
-      record.nodeCount = 0;
-      if (entry.nodeSets) {
-        record.nodeCount = entry.nodeSets.reduce((count, nodeSet) => count + nodeSet.nodeCount, 0);
-      }
+    filteredRecords.forEach(
+        record => table.push([record.asid, record.code, record.version, record.tags, record.nodeSize, record.nodeCount, record.cpu, record.memory]));
+    console.log(table.toString());
+  }
 
-      record.tags = "";
-      if (entry.config.deploymentTimeConfig && entry.config.deploymentTimeConfig.tags) {
-        record.tags = entry.config.deploymentTimeConfig.tags;
-      }
-      record.cpu = 0;
-      record.memory = 0;
-      if (entry.allocatedCapacity) {
-        record.cpu = entry.allocatedCapacity.cpu;
-        record.memory = entry.allocatedCapacity.mem;
-      }
-      return record;
-    });
-    let total = records.reduce((t, r) => {
+  _countTotal(filteredRecords, label) {
+    return filteredRecords.reduce((t, r) => {
           t.nodeCount += r.nodeCount;
           t.cpu += r.cpu;
           t.memory += r.memory;
           return t;
         },
         {
-          asid: "Total",
+          asid: label,
           code: "",
           version: "",
           nodeSize: "",
@@ -120,11 +110,36 @@ class PsTask {
           cpu: 0,
           memory: 0
         }
-    )
-    records.push(total);
-    records.forEach(
-        record => table.push([record.asid, record.code, record.version, record.tags, record.nodeSize, record.nodeCount, record.cpu, record.memory]));
-    console.log(table.toString());
+    );
+  }
+
+  _transformDeploymentEntry(entry) {
+    let record = {};
+    record.code = entry.code;
+    record.asid = entry.asid;
+    record.version = entry.version;
+    //FIXME: asi jich muze byt vice, nebo zadna
+    if (entry.config && entry.config.deployUnits && entry.config.deployUnits[0]) {
+      record.nodeSize = entry.config.deployUnits[0].nodeSize;
+    } else {
+      record.nodeSize = "";
+    }
+    record.nodeCount = 0;
+    if (entry.nodeSets) {
+      record.nodeCount = entry.nodeSets.reduce((count, nodeSet) => count + nodeSet.nodeCount, 0);
+    }
+
+    record.tags = "";
+    if (entry.config.deploymentTimeConfig && entry.config.deploymentTimeConfig.tags) {
+      record.tags = entry.config.deploymentTimeConfig.tags;
+    }
+    record.cpu = 0;
+    record.memory = 0;
+    if (entry.allocatedCapacity) {
+      record.cpu = entry.allocatedCapacity.cpu;
+      record.memory = entry.allocatedCapacity.mem;
+    }
+    return record;
   }
 }
 

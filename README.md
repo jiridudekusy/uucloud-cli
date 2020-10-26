@@ -37,6 +37,10 @@ For example:
    
 # Release Notes
 
+0.8.0
+-----
+- add support for filtering of apps on `ps` task
+
 0.7.3
 -----
 - ps task:
