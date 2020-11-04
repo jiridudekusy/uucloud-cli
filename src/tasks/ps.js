@@ -11,7 +11,7 @@ const optionsDefinitions = [
   {
     name: "codec",
     type: String,
-    description: "Format od result. Supported values : \"raw\"(JSON received from command call) or \"table\"(default)",
+    description: `Format od result. Supported values : "table"(default) or "raw"(JSON received from command call. It can be filtered using "apps" option.)`,
     defaultValue: "table"
   }
 ];
@@ -63,12 +63,18 @@ class PsTask {
     if (options.codec === "table") {
       this._printTable(deployList, options.apps);
     } else if (options.codec === "raw") {
-      this._printRaw(deployList);
+      this._printRaw(deployList, options.apps);
     }
   }
 
-  _printRaw(deployList) {
-    console.log(JSON.stringify(deployList, null, 2));
+  _printRaw(deployList, apps) {
+    let filteredPageEntries;
+    if (apps) {
+      filteredPageEntries = filterAppDeployments(deployList, apps);
+    } else {
+      filteredPageEntries = deployList;
+    }
+    console.log(JSON.stringify(filteredPageEntries, null, 2));
   }
 
   _printTable(deployList, apps) {
@@ -81,7 +87,7 @@ class PsTask {
     let filteredPageEntries = filterAppDeployments(deployList, apps);
     let filteredRecords = filteredPageEntries.map(this._transformDeploymentEntry);
     let allRecords = pageEntries.map(this._transformDeploymentEntry);
-    let totalFiltered = this._countTotal(filteredRecords,"Total filtered");
+    let totalFiltered = this._countTotal(filteredRecords, "Total filtered");
     let totalAll = this._countTotal(allRecords, "Total");
     if (totalAll.nodeCount != totalFiltered.nodeCount) {
       filteredRecords.push(totalFiltered);
