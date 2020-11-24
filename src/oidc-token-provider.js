@@ -1,4 +1,4 @@
-const OidcToken = require("uu_appg01_core-npm/src/scripts/uu_cloud/oidc-token");
+const OidcToken = require("uu_appg01_devkit-common/src/scripts/oidc-token");
 const homedir = require("os").homedir();
 const path = require("path");
 const fs = require("fs");

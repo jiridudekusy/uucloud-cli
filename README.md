@@ -37,6 +37,10 @@ For example:
    
 # Release Notes
 
+0.10.0
+------
+- use uuOidcg02
+
 0.9.0
 -----
 - add support for filtering of apps on `ps` task when using `raw` codec
