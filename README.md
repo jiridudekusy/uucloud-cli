@@ -6,7 +6,7 @@ This tool allows to execute various operations on uuCloud using CLI.
 ### Stable
 `npm install --registry "https://repo.plus4u.net/repository/npm/" -g $(npm v --registry http://registry.npmjs.com uucloud-cli dist.tarball)`
 ### Beta
-`npm install --registry "https://repo.plus4u.net/repository/npm/" -g $(npm v --registry http://registry.npmjs.com uucloud-cli@beta dist.tarball)`
+    `npm install --registry "https://repo.plus4u.net/repository/npm/" -g $(npm v --registry http://registry.npmjs.com uucloud-cli@beta dist.tarball)`
 
 ## Windows
 ### Stable
@@ -36,6 +36,10 @@ For example:
 
    
 # Release Notes
+
+0.10.2
+------
+- use provided access codes for token refresh
 
 0.10.0
 ------
