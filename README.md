@@ -37,6 +37,12 @@ For example:
    
 # Release Notes
 
+0.11.0
+------
+- add support for on-premise uucloud
+- add option `authenticationType` to support http basic auth
+- add authentication option `passwordFile` and option `passwordFile` to support authrntication usin g password in same way as uuDevKitg01
+
 0.10.2
 ------
 - use provided access codes for token refresh

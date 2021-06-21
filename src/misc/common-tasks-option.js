@@ -1,13 +1,19 @@
 const UESUri = require("../misc/ues-uri");
 const {LoggerFactory} = require("uu_appg01_core-logging");
 const {Config} = require("uu_appg01_core-utils");
+const fs = require("fs");
 
 const commonOptionsDefinitionsAuthentication = [
   {
     name: "authentication",
     alias: "a",
     type: String,
-    description: "Type of user authentication. It supports browser(default, token will be obtained from browser using currectly logged user), vault(obtained from oidc-plus4u-vault), interactive(you will be asked for ac1 and ac2)."
+    description: "Type of user authentication. It supports browser(default, token will be obtained from browser using currectly logged user), vault(obtained from oidc-plus4u-vault), interactive(you will be asked for ac1 and ac2) and passwordFile(file with ac1 and ac2)."
+  },
+  {
+    name: "authenticationType",
+    type: String,
+    description: "Type of authentication used for uuC3 and uuLogStore. It supports oidc(default), basic(http basic auth) ."
   },
   {
     name: "user",
@@ -26,6 +32,11 @@ const commonOptionsDefinitionsAuthentication = [
     alias: "v",
     type: Boolean,
     description: "Display debug output"
+  },
+  {
+    name: "passwordFile",
+    type: String,
+    description: "File containing ac1 and ac2. (2 lines: accessCode1=... and accessCode2=...)"  
   }
 ];
 
@@ -35,6 +46,11 @@ const commonOptionsDefinitionsWithResourcePool = [
     alias: "r",
     type: String,
     description: "uuCloud Resource pool uri."
+  },
+  {
+    name: "c3-uri",
+    type: String,
+    description: "Use different uuC3 than default."
   },
   ...commonOptionsDefinitionsAuthentication
 ];
@@ -70,11 +86,15 @@ function verifyCommonOptionsDefinitionsAuthentication(options, taskUtils) {
     LoggerFactory.configureAll();
   }
   if (options.authentication) {
-    taskUtils.testOption(["browser", "vault", "interactive"].indexOf(options.authentication) > -1, "Invalid authentication.");
-    if (options.authentication === "browser") {
-      taskUtils.testOption(!options.user, "User cannot be specified for browser authentication.");
+    taskUtils.testOption(["browser", "vault", "interactive", "passwordFile"].indexOf(options.authentication) > -1, "Invalid authentication.");
+    if (options.authentication === "browser" || options.authentication === "passwordFile") {
+      taskUtils.testOption(!options.user, `User cannot be specified for ${options.authentication} authentication.`);
     } else {
       taskUtils.testOption(options.user, `User must be specified for ${options.authentication} authentication.`);
+    }
+    if(options.authentication === "passwordFile"){
+      taskUtils.testOption(options.passwordFile, `Password file must be specified for ${options.authentication} authentication.`);
+      taskUtils.testOption(fs.existsSync(options.passwordFile), `File ${options.testOption} does not exists.`);
     }
   }
 }
