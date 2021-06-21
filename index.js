@@ -7,6 +7,7 @@ const uuCloudCli = require("./src/uuCloudCli");
 
 uuCloudCli()
 .then(() => {
+  console.log("Completed")
 }).catch(e => {
   console.log(`Error in application : ${e.stack}`);
 });

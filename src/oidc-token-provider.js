@@ -1,4 +1,5 @@
 const OidcToken = require("uu_appg01_devkit-common/src/scripts/oidc-token");
+const BasicAuth = require("uu_appg01_devkit-common/src/scripts/basic-auth");
 const homedir = require("os").homedir();
 const path = require("path");
 const fs = require("fs");
@@ -25,12 +26,24 @@ class CustomOidcToken extends OidcToken {
   }
 
   async _login(accessCode1, accessCode2) {
-    let res =  super._login(accessCode1, accessCode2);
-    if(res){
+    let res = super._login(accessCode1, accessCode2);
+    if (res) {
       this._ac1 = accessCode1;
       this._ac2 = accessCode2;
     }
     return res;
+  }
+}
+
+class CustomBasicAuth extends BasicAuth {
+  async _login(ac1, ac2) {
+    let token = Buffer.from(ac1 + ":" + ac2).toString('base64');
+    this._setToken(token);
+    return true;
+  }
+
+  async refresh() {
+    return this.token;
   }
 }
 
@@ -46,11 +59,24 @@ class OidcTokenProvider {
     if (!mode) {
       mode = "browser";
     }
+    let type;
+    if (options) {
+      type = options.authenticationType;
+    }
+    if (!type) {
+      type = "oidc";
+    }
+
     let workDir = path.join(homedir, ".uucloud-cli", "work");
     if (!fs.existsSync(workDir)) {
       mkdirp.sync(workDir);
     }
-    let oidcToken = new CustomOidcToken(path.join(homedir, ".uucloud-cli", "work"));
+    let oidcToken;
+    if (type === "oidc") {
+      oidcToken = new CustomOidcToken(path.join(homedir, ".uucloud-cli", "work"));
+    } else {
+      oidcToken = new CustomBasicAuth();
+    }
     if (mode === "interactive") {
       let login = false;
       while (!login) {

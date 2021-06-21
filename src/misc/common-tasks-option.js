@@ -10,6 +10,11 @@ const commonOptionsDefinitionsAuthentication = [
     description: "Type of user authentication. It supports browser(default, token will be obtained from browser using currectly logged user), vault(obtained from oidc-plus4u-vault), interactive(you will be asked for ac1 and ac2)."
   },
   {
+    name: "authenticationType",
+    type: String,
+    description: "Type of authentication used for uuC3 and uuLogStore. It supports oidc(default), basic(http basic auth) ."
+  },
+  {
     name: "user",
     alias: "u",
     type: String,
@@ -35,6 +40,11 @@ const commonOptionsDefinitionsWithResourcePool = [
     alias: "r",
     type: String,
     description: "uuCloud Resource pool uri."
+  },
+  {
+    name: "c3-uri",
+    type: String,
+    description: "Use different uuC3 than default."
   },
   ...commonOptionsDefinitionsAuthentication
 ];

@@ -331,7 +331,7 @@ class LogsTask {
       deployList = present.mocks.getAppDeploymentList;
     } else {
       let oidcToken = await new OidcTokenProvider().getToken(options);
-      let uuCloud = new UuCloud({oidcToken});
+      let uuCloud = new UuCloud({oidcToken, c3Uri: options["c3-uri"]});
       deployList = await uuCloud.getAppDeploymentList(resourcePoolUri);
     }
     let filteredApps = filterAppDeployments(deployList, appsIdentifiers);
