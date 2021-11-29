@@ -40,7 +40,7 @@ async function execute() {
   let notifier = updateNotifier({pkg});
   if(notifier.update && process.stdout.isTTY && notifier.update.current != notifier.update.latest){
     notifier.notify({isGlobal: true, defer: false});
-    console.log("Press any key to continue...");
+    console.error("Press any key to continue...");
     await keypress();
   }
 
@@ -63,7 +63,7 @@ async function execute() {
   if (!task) {
     console.error("Unknown command");
     const usage = commandLineUsage(sections);
-    console.log(usage);
+    console.error(usage);
     return;
   }
 

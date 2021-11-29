@@ -20,9 +20,9 @@ class CustomOidcToken extends OidcToken {
       }
     }
     if (this.token || !(await this._loadTokenFromFile())) {
-      console.log("Auth: refresh token.");
+      console.error("Auth: refresh token.");
       if (this._ac1) {
-        console.log("Auth: refresh token using access codes.");
+        console.error("Auth: refresh token using access codes.");
         await this._login(this._ac1, this._ac2)
       } else {
         await this._interactiveLogin();
@@ -86,8 +86,8 @@ class OidcTokenProvider {
     if (mode === "interactive") {
       let login = false;
       while (!login) {
-        let ac1 = await read({prompt: `Access code 1 for ${options.user} : `, silent: true});
-        let ac2 = await read({prompt: `Access code 2 for ${options.user} : `, silent: true});
+        let ac1 = await read({prompt: `Access code 1 for ${options.user} : `, silent: true, output: process.stderr});
+        let ac2 = await read({prompt: `Access code 2 for ${options.user} : `, silent: true, output: process.stderr});
         login = await oidcToken._login(ac1, ac2);
         if (!login) {
           console.error("Login not successful.");
@@ -100,7 +100,7 @@ class OidcTokenProvider {
         console.error("oidc-plus4u-vault does not exists.");
         process.exit(3);
       }
-      let password = await read({prompt: `Secure store password : `, silent: true});
+      let password = await read({prompt: `Secure store password : `, silent: true, output: process.stderr});
       let secureStoreContent;
       try {
         secureStoreContent = secureStore.read(password);

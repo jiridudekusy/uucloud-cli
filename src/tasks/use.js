@@ -32,7 +32,7 @@ class UseTask {
     let options = this._taskUtils.parseCliArguments(cliArgs);
     verifyCommonOptionsDefinitionsWithResourcePool(options, this._taskUtils);
     Object.keys(options).forEach(key => Config.set(key, options[key]));
-    console.log("Current configuration:");
+    console.error("Current configuration:");
     console.log(JSON.stringify(Config.all, null, 2));
   }
 }

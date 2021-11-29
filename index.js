@@ -9,5 +9,5 @@ uuCloudCli()
 .then(() => {
   process.stdin.destroy();
 }).catch(e => {
-  console.log(`Error in application : ${e.stack}`);
+  console.error(`Error in application : ${e.stack}`);
 });
