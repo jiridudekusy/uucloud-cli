@@ -4,16 +4,16 @@ This tool allows to execute various operations on uuCloud using CLI.
 
 ## Linux and MacOS
 ### Stable
-`npm install --registry "https://repo.plus4u.net/repository/npm/" -g $(npm v --registry http://registry.npmjs.com uucloud-cli dist.tarball)`
+`npm install --registry "https://repo.plus4u.net/repository/npm/" -g $(npm v --registry https://registry.npmjs.com uucloud-cli dist.tarball)`
 ### Beta
-    `npm install --registry "https://repo.plus4u.net/repository/npm/" -g $(npm v --registry http://registry.npmjs.com uucloud-cli@beta dist.tarball)`
+`npm install --registry "https://repo.plus4u.net/repository/npm/" -g $(npm v --registry https://registry.npmjs.com uucloud-cli@beta dist.tarball)`
 
 ## Windows
 ### Stable
-1. `npm v --registry http://registry.npmjs.com uucloud-cli dist.tarball)`
+1. `npm v --registry https://registry.npmjs.com uucloud-cli dist.tarball`
 2. `npm install --registry "https://repo.plus4u.net/repository/npm/" -g {archive url from previous command}`
 ### Beta 
-1. `npm v --registry http://registry.npmjs.com uucloud-cli@beta dist.tarball)`
+1. `npm v --registry https://registry.npmjs.com uucloud-cli@beta dist.tarball`
 2. `npm install --registry "https://repo.plus4u.net/repository/npm/" -g {archive url from previous command}`
 
 # How to use ?
@@ -36,6 +36,15 @@ For example:
 
    
 # Release Notes
+0.12.0
+-------------
+- extend logs command:
+    - add `jsonstream` codec
+    - add `criteria` option to support server side filtering
+    - add `timeWindowType` option to support paging by different time attribute(`tmestamp` is default)
+- all non-results texts (such as promp messages or information messages) are now printed to stderr instead of stdout. Only result is printed to stdout and it allows to forexample pipe result of logs command with `jsonstream` codec directly to `jq` tool
+
+
 
 0.11.0
 ------
@@ -94,8 +103,8 @@ For example:
 
 Publish stable to npmjs: 
 
-`npm publish --registry http://registry.npmjs.com`
+`npm publish --registry https://registry.npmjs.com`
 
 Publish beta to npmjs: 
 
-`npm publish --registry http://registry.npmjs.com --tag beta`
+`npm publish --registry https://registry.npmjs.com --tag beta`

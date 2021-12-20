@@ -31,7 +31,7 @@ class TaskUtils {
 
   printHelpAndExit(exitCode = 0) {
     let usage = commandLineUsage(this._help);
-    console.log(usage);
+    console.error(usage);
     process.exit(exitCode);
   }
 

@@ -29,23 +29,23 @@ class UuCloud {
 
   async getAppDeploymentList(resourcePoolUri) {
 
-    let result = await this._executeCommand(CmdHelper.buildCmd2Url(this._buildGetAppDeploymentListCmdUri(), resourcePoolUri), "get", null, HEADERS);
+    let result = await this._executeCommand(CmdHelper.buildCmd2Url(this._buildGetAppDeploymentListCmdUri(), resourcePoolUri), "get", null, {}, HEADERS);
 
     let deployList = JSON.parse(result.body)
 
     return deployList;
   }
 
-  async _executeCommand(url, method, params, headers, tryNumber = 0) {
+  async _executeCommand(url, method, params, options, headers, tryNumber = 0) {
     try {
-      return await this._appClient.exchange(url, method, params, headers);
+      return await this._appClient.exchange(url, method, params, options, headers);
     } catch (err) {
       if (tryNumber > 10) {
         logger.error(`All retries has failed.`, err);
         throw err;
       }
       logger.warn(`Request failed retrying #${tryNumber + 1}....`)
-      return await this._executeCommand(url, method, params, headers, ++tryNumber);
+      return await this._executeCommand(url, method, params, options, headers, ++tryNumber);
     }
   }
 

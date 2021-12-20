@@ -97,13 +97,25 @@ const optionsDefinitions = [
   {
     name: "codec",
     type: String,
-    description: "Format od result. Supported values : \"json\" or \"formatted\"(default)",
+    description: "Format od result. Supported values : \"formatted\"(default), \"json\" or \"jsonstream\"(Line-delimited JSON)",
     defaultValue: "formatted"
   },
   {
     name: "filter",
     type: String,
-    description: "Filter log records."
+    description: "Filter log records (on client side after records are downloaded)."
+  },
+  {
+    name: "criteria",
+    alias: "c",
+    type: String,
+    multiple: true,
+    description: "Select log reccords based on criteria (server side). Format should be \"[key]:[value]\". Multiple criteria can be specificed."
+  },
+  {
+    name: "timeWindowType",
+    type: String,
+    description: "Format od result. Supported values : \"timeStamp\"(default), \"time\", \"eventTime\""    
   },
   ...commonOptionsDefinitionsWithPresentAndApps
 ];
@@ -192,7 +204,7 @@ const help = [
               * requestMethod - request http method - only Java
               * requestSize - size of request - only Java
               * responseSize - size of response 
-              * responseTime - response time of request - only Java              * 
+              * responseTime - response time of request - only Java              
               * userAgent - http client user agent
               * responseStatus - status of http response`
 
@@ -207,7 +219,16 @@ const help = [
     ]
   },
   {
-    header: "How does filtering work ?",
+    header: "How does criteria works ?",
+    content: `In case that you need to find some specific set of log records, you have 2 options.
+    1) Server-side by using --criteria. (more efficient)
+    2) Client-side by using --filter. (not efficient but poweful - described latter)
+
+    By using criteria you are able to use any dtoIn parameter of uuCmd https://uuapp.plus4u.net/uu-bookkit-maing01/8e029f520c1747d3a6b5fa270fe04f15/book/page?code=getRecordList .
+    `
+  },
+  {
+    header: "How does filtering works ?",
     content: `In case that you need to find some specific set of log records, you can use --filter option.
     Filtering is realized using filtrex (https://www.npmjs.com/package/filtrex) and you can use all documented functions to filter log records.
 
@@ -234,7 +255,7 @@ const help = [
         description: "Print all ERRORS."
       }
     ]
-  },
+  }, 
   {
     header: "How does apps selection work ?",
     content: `Apps selection works using 3 mechanisms. You can combine all of them together.
@@ -275,7 +296,7 @@ class LogsTask {
     if (options.follow && (options.since || options.tail || options.until)) {
       this._taskUtils.printOtionsErrorAndExit("You can either use follow or other options");
     }
-    this._taskUtils.testOption(["json", "formatted"].indexOf(options.codec) > -1, "Invalid codec.");
+    this._taskUtils.testOption(["json", "formatted", "jsonstream"].indexOf(options.codec) > -1, "Invalid codec.");
     let present = this._taskUtils.loadPresent(options);
     let apps;
     options = this._taskUtils.mergeWithConfig(options, present);
@@ -291,11 +312,25 @@ class LogsTask {
     let filterFn = () => true;
     if (options.filter) {
       filterFn = compileExpression(options.filter);
+    }    
+    this._taskUtils.testOption(!(!options.stats && options.groupBy), "You cannot use groupBy without stats mode.");
+    let criteria = {};
+    if(options.criteria){      
+      options.criteria.forEach( cv => {
+        this._taskUtils.testOption(cv.includes(":"), "Critera value mus be in form [key]:[value]");
+        let key = cv.slice(0, cv.indexOf(":"));
+        let value= cv.slice(cv.indexOf(":")+1);;        
+        criteria[key] = value;                
+      });
     }
-    if (options.follow) {
+    if(options.timeWindowType){
+      this._taskUtils.testOption(["timeStamp", "time", "eventTime"].indexOf(options.timeWindowType) > -1, "Invalid timeWindowType.");
+      criteria.timeWindowType = options.timeWindowType;
+    }
+    if (options.follow) {      
       this._taskUtils.testOption(!options.output, "You cannot uses output together with follow.");
-      console.log(apps.map(app => "Following logs for application : " + app.appDeploymentUri).join("\n"));
-      await this.followLog(apps, filterFn, options);
+      console.error(apps.map(app => "Following logs for application : " + app.appDeploymentUri).join("\n"));
+      await this.followLog(apps, filterFn, criteria, options);
     } else {
       let from;
       let now = new Date();
@@ -315,13 +350,13 @@ class LogsTask {
         to = now;
       }
       if (from) {
-        console.log(`Getting logs since : ${from.toISOString()} until: ${to.toISOString()}`);
+        console.error(`Getting logs since : ${from.toISOString()} until: ${to.toISOString()}`);
       }
-      console.log(apps.map(app => "Getting logs for application : " + app.appDeploymentUri).join("\n"));
+      console.error(apps.map(app => "Getting logs for application : " + app.appDeploymentUri).join("\n"));
       if (!options.output) {
         this._taskUtils.testOption(apps.length === 1, "You can follow logs up to 10 applications, but you can list history logs only for 1.");
       }
-      await this.getLog(apps, from, to, filterFn, options);
+      await this.getLog(apps, from, to, filterFn, criteria, options);
     }
   }
 
@@ -363,7 +398,7 @@ class LogsTask {
     return apps;
   }
 
-  async followLog(apps, filterFn, options) {
+  async followLog(apps, filterFn, criteria, options) {
     let token = await new OidcTokenProvider().getToken(options);
 
     let config = {
@@ -377,10 +412,10 @@ class LogsTask {
     //tail logs cannot be with --output
     let appsFormat = this._prepareApplicationFormat(apps, true);
     // let logs = await uuLogStore.getLogs(appDeploymentUri, from,null, logs => logs.forEach(formatLogRecord));
-    await uuLogStore.tailLogs(appDeploymentUris, (logs) => this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format));
+    await uuLogStore.tailLogs(appDeploymentUris, criteria, (logs) => this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format));
   }
 
-  async getLog(apps, from, to, filterFn, options) {
+  async getLog(apps, from, to, filterFn, criteria, options) {
     let token = await new OidcTokenProvider().getToken(options);
 
     let config = {
@@ -395,23 +430,23 @@ class LogsTask {
       let outputDir = path.resolve(this._opts.currentDir, options.output);
       await mkdirp(outputDir);
       let promises = apps.map(
-          (app) => uuLogStore.getLogs(app.appDeploymentUri, from, to,
+          (app) => uuLogStore.getLogs(app.appDeploymentUri, from, to, criteria,
               (logs) => this._storeLogs(outputDir, app, appsFormat, options.codec, options.format, logs.filter(filterFn))));
       await Promise.all(promises);
-      console.log(`All logs has been exported to ${outputDir}`);
+      console.error(`All logs has been exported to ${outputDir}`);
     } else {
       let appDeploymentUris = apps.map(app => app.appDeploymentUri);
       // let logs = await uuLogStore.getLogs(appDeploymentUri, from,null, logs => logs.forEach(formatLogRecord));
-      await uuLogStore.getLogs(appDeploymentUris[0], from, to, (logs) => this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format));
-    }
+      await uuLogStore.getLogs(appDeploymentUris[0], from, to, criteria, (logs) => this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format));
+    }    
   }
 
   _storeLogs(output, app, appsFormat, codec, format, logs) {
     let uesUri = UESUri.parse(app.appDeploymentUri);
     let filename = `${uesUri.object.code || ""}-${uesUri.object.id}.log`;
     let file = path.resolve(output, filename);
-    console.debug(`Storing ${logs.length} for app ${uesUri.object.code} into file ${file}`);
-    fs.appendFileSync(file, logs.map(logRecord => this._formatLogRecordForFile(logRecord, appsFormat, format)).join("\n").trim(), "utf8");
+    console.error(`Storing ${logs.length} for app ${uesUri.object.code} into file ${file}`);
+    fs.appendFileSync(file, logs.map(logRecord => this._formatLogRecordForFile(logRecord, appsFormat, codec, format)).join("\n").trim(), "utf8");
   }
 
   _prepareApplicationFormat(apps, withColour) {
@@ -443,6 +478,9 @@ class LogsTask {
   _formatLogRecordInternal(r, apps, {withColour, format, defaultFormat, codec}) {
     if (codec === "json") {
       return JSON.stringify(r, null, 2) + ",";
+    }
+    if (codec === "jsonstream") {
+      return JSON.stringify(r, null, 0);
     }
     let context = {
       _appsFormat: apps,

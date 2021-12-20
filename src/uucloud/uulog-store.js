@@ -1,7 +1,7 @@
 const CmdHelper = require("uu_appg01_core-npm/src/scripts/uu_cloud/misc/cmd-helper.js");
 const AppClient = require("uu_appg01_core-npm/src/scripts/uu_cloud/misc/app-client.js");
 const DEFAULT_CMD_BASE_PATH = "Log/getRecordList/exec";
-const {LoggerFactory} = require("uu_appg01_core-logging");
+const { LoggerFactory } = require("uu_appg01_core-logging");
 const logger = LoggerFactory.get("UuLogStore");
 const moment = require("moment");
 const correctJson = require("../misc/uulogs-json-corrector");
@@ -28,7 +28,7 @@ class UuLogStore {
     return `${this._config.logStoreUri}${DEFAULT_CMD_BASE_PATH}`
   }
 
-  async tailLogs(appDeploymentUris, callback) {
+  async tailLogs(appDeploymentUris, criteria, callback) {
     let appsToWatch = appDeploymentUris.reduce((acc, appDeploymentUri) => {
       acc[appDeploymentUri] = {
         appDeploymentUri,
@@ -37,18 +37,18 @@ class UuLogStore {
       };
       return acc;
     }, {});
-    this._tailLogInternal(appsToWatch, callback);
+    this._tailLogInternal(appsToWatch, criteria, callback);
   }
 
-  _tailLogInternal(appsToWatch, callback) {
+  _tailLogInternal(appsToWatch, criteria, callback) {
     let to = new Date();
-    let promises = Object.values(appsToWatch).map(app => this._getLogs(app.appDeploymentUri, app.from, to, app.processedIds));
+    let promises = Object.values(appsToWatch).map(app => this._getLogs(app.appDeploymentUri, app.from, to, criteria, app.processedIds));
     Promise.all(promises).then(results => {
       results.forEach(result => {
         let app = appsToWatch[result.appDeploymentUri];
         let newFrom = app.from;
         if (result.logs.length > 0) {
-          newFrom = result.logs[0].time;
+          newFrom = result.logs[0][criteria.timeWindowType || "timestamp"];
         }
         app.processedIds = result.processedIds;
         app.from = newFrom;
@@ -57,12 +57,12 @@ class UuLogStore {
       logs = logs.sort(this._logRecordsSortFunction)
       callback(logs.reverse());
       setTimeout(() => {
-        this._tailLogInternal(appsToWatch, callback)
+        this._tailLogInternal(appsToWatch, criteria, callback)
       }, 5000);
     });
   }
 
-  async getLogs(appDeploymentUri, from, to, callback) {
+  async getLogs(appDeploymentUri, from, to, criteria, callback) {
     let response;
     let result = [];
     let processedIds = {};
@@ -70,7 +70,7 @@ class UuLogStore {
       to = new Date();
     }
     do {
-      response = await this._getLogs(appDeploymentUri, from, to, processedIds);
+      response = await this._getLogs(appDeploymentUri, from, to, criteria, processedIds);
       processedIds = response.processedIds;
       if (callback) {
         callback(response.logs);
@@ -78,7 +78,7 @@ class UuLogStore {
         result = result.concat(result, response.logs);
       }
       if (to && response.logs && response.logs.length > 0) {
-        to = new Date(response.logs[0].time);
+        to = new Date(response.logs[0][criteria.timeWindowType || "timestamp"]);
         //Hotfix : remove UuC3::Helper::ProgressMonitor logs from calculation of ne "to" timestamp, since it is in wgonr timezone.
         to = response.logs.filter(r => r.logger != "UuC3::Helper::ProgressMonitor").reduce((newTo, r) => {
           let rTime = new Date(r.time)
@@ -94,20 +94,23 @@ class UuLogStore {
     return result;
   }
 
-  async _getLogs(appDeploymentUri, from, to, filterIds) {
+  async _getLogs(appDeploymentUri, from, to, criteria, filterIds) {
     if (from && to) {
       logger.debug(`Fetching log records ${from.toISOString()} - ${to.toISOString()}`);
     }
     let query = new Map();
     from && query.set("from", from.toISOString());
-    to && query.set("to", to.toISOString());
+    to && query.set("to", to.toISOString());   
+    if (criteria) {
+      Object.entries(criteria).forEach(([key, value]) => query.set(key, value));
+    }
     let exportCmdUri = this._buildExportCmdUri(appDeploymentUri);
 
     let result = await this._executeCommand(
-        CmdHelper.buildCmd2Url(exportCmdUri, appDeploymentUri, query),
-        "get",
-        null,
-        HEADERS
+      CmdHelper.buildCmd2Url(exportCmdUri, appDeploymentUri, query),
+      "get",
+      null,
+      HEADERS
     );
 
     let response = JSON.parse(result.body);
@@ -125,7 +128,7 @@ class UuLogStore {
       logRecord.appDeploymentUri = appDeploymentUri;
       return logRecord
     }).sort(this._logRecordsSortFunction);
-    return {totalSize: response.totalSize, logs, processedIds, appDeploymentUri};
+    return { totalSize: response.totalSize, logs, processedIds, appDeploymentUri };
   }
 
   /**
@@ -140,7 +143,13 @@ class UuLogStore {
         message = correctJson(message, "message", "traceId");
         message = correctJson(message, "stackTrace");
         try {
-          let messageObj = JSON.parse(message);
+          let messageObj;
+          //Hotfix for uuCloud@Amprion...message ends with "\n" 
+          if (message.endsWith("\\n")) {
+            messageObj = JSON.parse(message.slice(0, -2));
+          } else {
+            messageObj = JSON.parse(message.trim());
+          }
           Object.assign(logRecord, messageObj);
         } catch (e) {
         }
@@ -151,6 +160,9 @@ class UuLogStore {
 
   _transformTimeAttribute(logRecord) {
     logRecord.time = new Date(logRecord.time);
+    logRecord.timestamp = new Date(logRecord.timestamp);
+    //add timeStamp attribute due to that the dtoIn attribute timeWidowType is using timeStamp instead of timestamp
+    logRecord.timeStamp = logRecord.timestamp;
     if (!logRecord.eventTime) {
       logRecord.eventTime = logRecord.time;
     } else if (logRecord.eventTime.startsWith("[")) {
@@ -191,7 +203,7 @@ class UuLogStore {
         logger.error(`All retries has failed.`, err);
         throw err;
       }
-      logger.warn(`Request failed retrying #${tryNumber+1}....`)
+      logger.warn(`Request failed retrying #${tryNumber + 1}....`)
       return await this._executeCommand(url, method, params, headers, ++tryNumber);
     }
   }
@@ -202,12 +214,12 @@ class UuLogStore {
     //put correlated records into single record, pass through not correlated records
     let resultLogs = logs.reduce((acc, logRecord) => {
       if (!logRecord.correlationId) {
-        acc.push({type: "STANDARD", value: logRecord});
+        acc.push({ type: "STANDARD", value: logRecord });
       } else {
         let [correlationId, index] = logRecord.correlationId.split("-");
         if (!msgCorrelations[correlationId]) {
           msgCorrelations[correlationId] = {};
-          acc.push({type: "CORRELATED", value: msgCorrelations[correlationId]});
+          acc.push({ type: "CORRELATED", value: msgCorrelations[correlationId] });
         }
         msgCorrelations[correlationId][index] = logRecord;
       }
@@ -241,7 +253,7 @@ class UuLogStore {
     } catch (e) {
       message = correctJson(message, "message", "traceId");
       message = correctJson(message, "stackTrace");
-      message = message.replace(/\n/g,"\\n");
+      message = message.replace(/\n/g, "\\n");
       return JSON.parse(message);
     }
   }
