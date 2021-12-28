@@ -36,6 +36,11 @@ For example:
 
    
 # Release Notes
+
+0.12.1
+------
+- bugfix: support / in resource pool uri
+
 0.12.0
 -------------
 - extend logs command:
