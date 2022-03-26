@@ -37,6 +37,11 @@ For example:
    
 # Release Notes
 
+0.12.2
+------
+- bugfix: ensure that colors in version 1.4.0 is used (https://www.bleepingcomputer.com/news/security/dev-corrupts-npm-libs-colors-and-faker-breaking-thousands-of-apps/)
+
+
 0.12.1
 ------
 - bugfix: support / in resource pool uri
