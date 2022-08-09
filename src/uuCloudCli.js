@@ -6,6 +6,8 @@ const commandLineArgs = require('command-line-args');
 const commandLineUsage = require('command-line-usage');
 const updateNotifier = require('update-notifier');
 const pkg = require('../package.json');
+const Config = require("./misc/config");
+const { parseArgsStringToArgv } = require('string-argv');
 
 const keypress = async () => {
   process.stdin.setRawMode(true)
@@ -42,16 +44,28 @@ async function execute() {
     notifier.notify({isGlobal: true, defer: false});
     console.error("Press any key to continue...");
     await keypress();
-  }
+  };
 
   const mainDefinitions = [
     {name: 'command', defaultOption: true}
   ];
 
-  const mainOptions = commandLineArgs(mainDefinitions, {stopAtFirstUnknown: true});
-  const argv = mainOptions._unknown || [];
+  let mainOptions = commandLineArgs(mainDefinitions, {stopAtFirstUnknown: true});
   let task;
   let opts = {currentDir};
+  let shortcuts = Config.all.shortcuts || [];
+  if(shortcuts.length > 0) {
+    sections.push({
+      header: 'Shortcuts',
+      content: shortcuts.map(s => {return {name: s.shortcut, summary: s.command}})
+    });
+  }
+  let shortcut = shortcuts.find(i => i.shortcut === mainOptions.command);
+  if(shortcut){
+    let parsedShortcut = parseArgsStringToArgv(shortcut.command);
+    mainOptions = commandLineArgs(mainDefinitions, {stopAtFirstUnknown: true, argv: [...parsedShortcut, ...(mainOptions._unknown||[])]})
+  }
+  const argv = mainOptions._unknown || [];
   if (mainOptions.command === "ps") {
     task = new PsTask(opts);
   } else if (mainOptions.command === "logs") {

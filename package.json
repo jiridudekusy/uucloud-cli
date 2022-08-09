@@ -1,7 +1,7 @@
 {
   "name": "uucloud-cli",
   "license": "MIT",
-  "version": "0.12.2",
+  "version": "0.13.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/jiridudekusy/uucloud-cli.git"
@@ -35,7 +35,8 @@
     "uu_appg01_core-npm": "^4.3.0",
     "uu_appg01_core-utils": "^4.3.0",
     "uu_appg01_devkit-common": "^4.2.1",
-    "colors": "1.4.0"
+    "colors": "1.4.0",
+    "string-argv": "^0.3.1"
   },
   "devDependencies": {
     "jest": "^23.6.0",

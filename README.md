@@ -4,17 +4,15 @@ This tool allows to execute various operations on uuCloud using CLI.
 
 ## Linux and MacOS
 ### Stable
-`npm install --registry "https://repo.plus4u.net/repository/npm/" -g $(npm v --registry https://registry.npmjs.com uucloud-cli dist.tarball)`
+`MONGOMS_DISABLE_POSTINSTALL=1 npm install --registry "https://repo.plus4u.net/repository/npm/" -g uucloud-cli`
 ### Beta
-`npm install --registry "https://repo.plus4u.net/repository/npm/" -g $(npm v --registry https://registry.npmjs.com uucloud-cli@beta dist.tarball)`
+`MONGOMS_DISABLE_POSTINSTALL=1 npm install --registry "https://repo.plus4u.net/repository/npm/" -g uucloud-cli@beta`
 
 ## Windows
 ### Stable
-1. `npm v --registry https://registry.npmjs.com uucloud-cli dist.tarball`
-2. `npm install --registry "https://repo.plus4u.net/repository/npm/" -g {archive url from previous command}`
+`npm install --registry "https://repo.plus4u.net/repository/npm/" -g uucloud-cli`
 ### Beta 
-1. `npm v --registry https://registry.npmjs.com uucloud-cli@beta dist.tarball`
-2. `npm install --registry "https://repo.plus4u.net/repository/npm/" -g {archive url from previous command}`
+`npm install --registry "https://repo.plus4u.net/repository/npm/" -g uucloud-cli@beta`
 
 # How to use ?
 
@@ -32,10 +30,71 @@ For example:
 
 `uucloud logs -a browser --log-store-uri="https://libra-sys-ei.plus4u.net/uu-logstore/" -n "ues:DTC-BT[99923616732520257]:LIBRA_DATAFLOW[5c5d4bdce1ada19aba86fdbd]:USY.LIBRAG01.CONFIGURATION[5c5d4efde1ada1405d86fe42]"`
 
-# How to use presents ? 
+# How to use presets ?
 
+Presets allows set default values for named preset.   
+
+Example of usage from config.json:
+```json
+{
+  "...": "any aother configuration",
+  "presents": {
+    "libra-int-west": {
+      "resourcePool": "ues:DEV0149-BT[84753967820114986]:AWE_USYE.LIBRAM[5cdacf12b338bf708e1b7645]"
+    },
+    "cams-dev": {
+      "resourcePool": "ues:UNI-BT:DEV",
+      "authenticationType": "basic",
+      "authentication": "vault",
+      "user": "camsDevCloudAdmin",
+      "c3-uri": "http://mongoa.cams:8080",
+      "log-store-uri": "http://apps.cams/usy-logstore-elkbackendg01/79900000000000000000000000000000"
+    }
+  },
+  "...": "any aother configuration"
+}
+
+```
+
+# How to use shortcuts ?
+
+Shortcuts allow to replace whole command or part of the command by shortcut commands. 
+
+Example of usage from config.json:
+```json
+{
+  "...": "any aother configuration",
+  "shortcuts": [
+    {
+      "shortcut": "p",
+      "command": "ps"
+    },
+    {
+      "shortcut": "l",
+      "command": "logs"
+    },    
+    {
+      "shortcut": "pp",
+      "command": "ps -p cams-prs"
+    },    
+    {
+      "shortcut": "lt",
+      "command": "logs -p cams-test -f"
+    }
+  ],
+  "...": "any aother configuration"
+}
+
+```
+
+//TODO JDK
    
 # Release Notes
+
+0.13.0
+------
+- add support for shortcuts
+
 
 0.12.2
 ------
