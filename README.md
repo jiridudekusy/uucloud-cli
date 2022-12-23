@@ -91,6 +91,16 @@ Example of usage from config.json:
    
 # Release Notes
 
+0.14.1
+------
+- extend ps & commands
+  - support for using multiple resource pools
+- add state to ps
+
+0.13.1
+------
+- bugfix: ensure uuUri query param is encoded
+
 0.13.0
 ------
 - add support for shortcuts

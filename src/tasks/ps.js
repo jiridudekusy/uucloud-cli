@@ -79,8 +79,8 @@ class PsTask {
 
   _printTable(deployList, apps) {
     let table = new Table({
-      head: ["asid", "uuSubApp", "Version", "Tags", "Node size", "Node Count", "CPU", "Memory"],
-      colWidths: [34, 50, 20, 20, 12, 13, 10, 10]
+      head: ["asid", "uuSubApp", "Version", "Tags", "Node size", "Node Count", "CPU", "Memory", "State"],
+      colWidths: [34, 50, 20, 20, 12, 13, 10, 10,12]
     });
     // let pageEntries
     let pageEntries = deployList.pageEntries;
@@ -95,7 +95,7 @@ class PsTask {
     filteredRecords.push(totalAll);
 
     filteredRecords.forEach(
-        record => table.push([record.asid, record.code, record.version, record.tags, record.nodeSize, record.nodeCount, record.cpu, record.memory]));
+        record => table.push([record.asid, record.code, record.version, record.tags, record.nodeSize, record.nodeCount, record.cpu, record.memory, record.state]));
     console.log(table.toString());
   }
 
@@ -145,6 +145,7 @@ class PsTask {
       record.cpu = entry.allocatedCapacity.cpu;
       record.memory = entry.allocatedCapacity.mem;
     }
+    record.state = entry.state;
     return record;
   }
 }

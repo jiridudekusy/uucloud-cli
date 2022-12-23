@@ -28,10 +28,18 @@ class UuCloud {
   }
 
   async getAppDeploymentList(resourcePoolUri) {
-
-    let result = await this._executeCommand(CmdHelper.buildCmd2Url(this._buildGetAppDeploymentListCmdUri(), resourcePoolUri), "get", null, {}, HEADERS);
-
-    let deployList = JSON.parse(result.body)
+    let deployList;
+    for (let rp of resourcePoolUri) {
+      //FIXME: CmdHelper.buildCmd2Url does not encode  appDeploymentUri
+      let result = await this._executeCommand(CmdHelper.buildCmd2Url(this._buildGetAppDeploymentListCmdUri(), encodeURIComponent(rp)), "get", null, {}, HEADERS);
+      result = JSON.parse(result.body);
+      if(!deployList){
+        deployList = result;
+      }else{
+        deployList.pageEntries.push(...result.pageEntries);
+        deployList.totalSize += result.totalSize;
+      }
+    }
 
     return deployList;
   }

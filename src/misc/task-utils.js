@@ -18,15 +18,20 @@ class TaskUtils {
   }
 
   mergeWithConfig(options, present){
+    let res;
     if(present) {
       let presentClone = Object.assign({}, present);
       delete presentClone.mocks;
-      return Object.assign(presentClone, options);
+      res = Object.assign(presentClone, options);
     } else {
       let cfgClone = Object.assign({}, Config.all);
       delete cfgClone.presents;
-      return Object.assign(cfgClone, options);
+      res = Object.assign(cfgClone, options);
     }
+    if (!Array.isArray(res.resourcePool)) {
+      res.resourcePool = [res.resourcePool];
+    }
+    return res;
   }
 
   printHelpAndExit(exitCode = 0) {

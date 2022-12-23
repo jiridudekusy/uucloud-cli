@@ -107,7 +107,8 @@ class UuLogStore {
     let exportCmdUri = this._buildExportCmdUri(appDeploymentUri);
 
     let result = await this._executeCommand(
-      CmdHelper.buildCmd2Url(exportCmdUri, appDeploymentUri, query),
+      //FIXME: CmdHelper.buildCmd2Url does not encode  appDeploymentUri
+      CmdHelper.buildCmd2Url(exportCmdUri, encodeURIComponent(appDeploymentUri), query),
       "get",
       null,
       HEADERS
