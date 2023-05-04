@@ -91,6 +91,10 @@ Example of usage from config.json:
    
 # Release Notes
 
+0.15.0
+------
+- add support for logs download recovery (--recover flag)
+
 0.14.1
 ------
 - extend ps & commands

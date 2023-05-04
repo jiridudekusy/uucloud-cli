@@ -16,6 +16,7 @@ const mkdirp = promisify(require('mkdirp'));
 const path = require("path");
 const fs = require("fs");
 const {compileExpression} = require("filtrex");
+const readLastLines = require('read-last-lines');
 const Handlebars = require("handlebars");
 const helpers = require("handlebars-helpers")({
   handlebars: Handlebars
@@ -67,6 +68,11 @@ const optionsDefinitions = [
     alias: "o",
     type: String,
     description: "Output directory for logs. Can be used only without \"follow\". With this option it is possible to get logs of multiple apps (each saved in separate file)."
+  },
+  {
+    name: "recover",
+    type: Boolean,
+    description: "If codec = jsonstream and output and interval is specified, recover logs download."
   },
   {
     name: "since",
@@ -430,8 +436,24 @@ class LogsTask {
       let outputDir = path.resolve(this._opts.currentDir, options.output);
       await mkdirp(outputDir);
       let promises = apps.map(
-          (app) => uuLogStore.getLogs(app.appDeploymentUri, from, to, criteria,
-              (logs) => this._storeLogs(outputDir, app, appsFormat, options.codec, options.format, logs.filter(filterFn))));
+          async (app) => {
+            if(options.recover && options.codec === "jsonstream" && to){
+              let file =this._getLogFile(outputDir, app);
+              if(fs.existsSync(file)){
+                try {
+                  let lastLogString = await readLastLines.read(file, 1, "utf8");
+                  let lastLog = JSON.parse(lastLogString);
+                  let newTo = new Date(lastLog[criteria.timeWindowType || "timestamp"]);
+                  to = newTo;
+                  console.error(`Downloading logs for application ${app.appDeploymentUri} has been recovered. Interval since : ${from.toISOString()} until: ${to.toISOString()}`);
+                } catch (e) {
+                  console.error(`Cannot recover logs dowload for application ${app.appDeploymentUri} continue with full interval. Error: ${e} `)
+                }
+              }
+            }
+            return uuLogStore.getLogs(app.appDeploymentUri, from, to, criteria,
+              (logs) => this._storeLogs(outputDir, app, appsFormat, options.codec, options.format, logs.filter(filterFn)))
+          });
       await Promise.all(promises);
       console.error(`All logs has been exported to ${outputDir}`);
     } else {
@@ -441,10 +463,16 @@ class LogsTask {
     }    
   }
 
-  _storeLogs(output, app, appsFormat, codec, format, logs) {
+  _getLogFile(output, app){
     let uesUri = UESUri.parse(app.appDeploymentUri);
     let filename = `${uesUri.object.code || ""}-${uesUri.object.id}.log`;
     let file = path.resolve(output, filename);
+    return file;
+  }
+
+  _storeLogs(output, app, appsFormat, codec, format, logs) {
+    let uesUri = UESUri.parse(app.appDeploymentUri);
+    let file = this._getLogFile(output, app);
     console.error(`Storing ${logs.length} for app ${uesUri.object.code} into file ${file}`);
     fs.appendFileSync(file, logs.map(logRecord => this._formatLogRecordForFile(logRecord, appsFormat, codec, format)).join("\n").trim(), "utf8");
   }
