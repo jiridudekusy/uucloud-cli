@@ -82,7 +82,7 @@ Example of usage from config.json:
       "command": "logs -p cams-test -f"
     }
   ],
-  "...": "any aother configuration"
+  "...": "any other configuration"
 }
 
 ```
@@ -90,6 +90,11 @@ Example of usage from config.json:
 //TODO JDK
    
 # Release Notes
+
+0.16.0
+------
+- add support for uuClougLogStoreg02
+- add minimal support for logs in uuCloudg02
 
 0.15.0
 ------

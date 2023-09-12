@@ -34,21 +34,26 @@ class TaskUtils {
     return res;
   }
 
-  printHelpAndExit(exitCode = 0) {
-    let usage = commandLineUsage(this._help);
+  printHelpAndExit(exitCode = 0, full = true) {
+    let usage;
+    if(full){
+      usage = commandLineUsage(this._help);
+    } else {
+      usage = `Run command with -help to get all options.`;
+    }
     console.error(usage);
     process.exit(exitCode);
   }
 
   testOption(test, errorMessage){
     if(!test){
-      this.printOtionsErrorAndExit(errorMessage);
+      this.printOtionsErrorAndExit(errorMessage, false);
     }
   }
 
-  printOtionsErrorAndExit(errorMessage){
+  printOtionsErrorAndExit(errorMessage, full = false){
     console.error(errorMessage);
-    this.printHelpAndExit(2);
+    this.printHelpAndExit(2, full);
   }
 
   loadPresent(options){
