@@ -91,6 +91,10 @@ Example of usage from config.json:
    
 # Release Notes
 
+0.16.1
+------
+- bugfix: uuClougLogStoreg02 - fixed obtaining logs from defined interval to list more that first page
+- 
 0.16.0
 ------
 - add support for uuClougLogStoreg02

@@ -98,7 +98,7 @@ class UuLogStore {
             } else {
                 to = null;
             }
-        } while (response.totalSize > 0 && to && to > from);
+        } while ((response.total > 0) && to && to > from);
         return result;
     }
 
@@ -124,11 +124,14 @@ class UuLogStore {
 
         let response = JSON.parse(result.body);
         let logs;
+        let total;
         if (this._config.logStoreg02) {
             logs = response.itemList;
             logs.forEach(this._fixLogRecordg02);
+            total = response.pageInfo.total;
         } else {
             logs = response.pageEntries;
+            total = response.totalSize;
         }
 
         let processedIds = {};
@@ -148,7 +151,7 @@ class UuLogStore {
             logRecord.appDeploymentUri = appDeploymentUri;
             return logRecord
         }).sort(this._logRecordsSortFunction);
-        return {totalSize: response.totalSize, logs, processedIds, appDeploymentUri};
+        return { total, logs, processedIds, appDeploymentUri };
     }
 
     _buildCmd2Url(url, mainEntity, query = null) {
