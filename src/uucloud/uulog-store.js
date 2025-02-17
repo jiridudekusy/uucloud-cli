@@ -12,6 +12,7 @@ const HEADERS = {
     "Content-type": "application/json"
 };
 
+
 class UuLogStore {
 
     constructor(config) {
@@ -81,7 +82,7 @@ class UuLogStore {
             response = await this._getLogs(appDeploymentUri, from, to, criteria, processedIds);
             processedIds = response.processedIds;
             if (callback) {
-                callback(response.logs);
+              await callback(response.logs);
             } else {
                 result = result.concat(result, response.logs);
             }

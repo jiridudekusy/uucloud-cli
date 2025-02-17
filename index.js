@@ -10,4 +10,5 @@ uuCloudCli()
   process.stdin.destroy();
 }).catch(e => {
   console.error(`Error in application : ${e.stack}`);
+  process.exit(13)
 });

@@ -17,6 +17,7 @@ const {promisify} = require('util');
 const mkdirp = promisify(require('mkdirp'));
 const path = require("path");
 const fs = require("fs");
+const plimit = require("p-limit");
 const {compileExpression} = require("filtrex");
 const readLastLines = require('read-last-lines');
 const Handlebars = require("handlebars");
@@ -101,12 +102,20 @@ const optionsDefinitions = [{
     alias: "c",
     type: String,
     multiple: true,
-    description: "Select log reccords based on criteria (server side). Format should be \"[key]:[value]\". Multiple criteria can be specificed."
-}, {
-    name: "timeWindowType",
-    type: String,
-    description: "Format od result. Supported values : \"timeStamp\"(default), \"time\", \"eventTime\""
-}, ...commonOptionsDefinitionsWithPresentAndApps];
+    description: "Select log records based on criteria (server side). Format should be \"[key]:[value]\". Multiple criteria can be specificed."
+},
+    {
+        name: "timeWindowType",
+        type: String,
+        description: "Format od result. Supported values : \"timeStamp\"(default), \"time\", \"eventTime\""
+    },
+    {
+        name: "maxParallelCalls",
+        type: Number,
+        description: "Maximum number of parallel calls to uuLogStore. Default is 3."
+    },
+    ...commonOptionsDefinitionsWithPresentAndApps
+];
 
 const help = [{
     header: "logs command", content: "Displays list of deployed uuApps."
@@ -289,7 +298,7 @@ class LogsTask {
                 this._taskUtils.testOption(cv.includes(":"), "Critera value mus be in form [key]:[value]");
                 let key = cv.slice(0, cv.indexOf(":"));
                 let value = cv.slice(cv.indexOf(":") + 1);
-                ;criteria[key] = value;
+                criteria[key] = value;
             });
         }
         if (options.timeWindowType) {
@@ -403,23 +412,28 @@ class LogsTask {
         if (options.output) {
             let outputDir = path.resolve(this._opts.currentDir, options.output);
             await mkdirp(outputDir);
-            let promises = apps.map(async (app) => {
-                if (options.recover && options.codec === "jsonstream" && to) {
+            let limit = plimit(options.maxParallelCalls || 3);
+            let promises = apps.map((app) => async () => {
+                let appTo = to;
+                if (options.recover && options.codec === "jsonstream" && appTo) {
                     let file = this._getLogFile(outputDir, app);
                     if (fs.existsSync(file)) {
                         try {
-                            let lastLogString = await readLastLines.read(file, 1, "utf8");
-                            let lastLog = JSON.parse(lastLogString);
+                            let lastLogString = await readLastLines.read(file, 2, "utf8");
+                            let lastLog = JSON.parse(lastLogString.split("\n")[0]);
                             let newTo = new Date(lastLog[criteria.timeWindowType || "timestamp"]);
-                            to = newTo;
-                            console.error(`Downloading logs for application ${app.appDeploymentUri} has been recovered. Interval since : ${from.toISOString()} until: ${to.toISOString()}`);
+                            appTo = newTo;
+                            console.error(`Downloading logs for application ${app.appDeploymentUri} has been recovered. Interval since : ${from.toISOString()} until: ${appTo.toISOString()}`);
                         } catch (e) {
                             console.error(`Cannot recover logs dowload for application ${app.appDeploymentUri} continue with full interval. Error: ${e} `)
                         }
                     }
                 }
-                return uuLogStore.getLogs(app.appDeploymentUri, from, to, criteria, (logs) => this._storeLogs(outputDir, app, appsFormat, options.codec, options.format, logs.filter(filterFn)))
-            });
+                await uuLogStore.getLogs(app.appDeploymentUri, from, appTo, criteria,
+                    (logs) => this._storeLogs(outputDir, app, appsFormat, options.codec, options.format, logs.filter(filterFn)))
+                console.error(`Logs for ${app.appDeploymentUri} has been downloaded.`);
+            }).map(f => limit(() => f()));
+            //TODO: Handle errors
             await Promise.all(promises);
             console.error(`All logs has been exported to ${outputDir}`);
         } else {
@@ -440,7 +454,11 @@ class LogsTask {
         let uesUri = UESUri.parse(app.appDeploymentUri);
         let file = this._getLogFile(output, app);
         console.error(`Storing ${logs.length} for app ${uesUri.object.code} into file ${file}`);
-        fs.appendFileSync(file, logs.map(logRecord => this._formatLogRecordForFile(logRecord, appsFormat, codec, format)).join("\n").trim(), "utf8");
+        let formattedLogs = logs.map(logRecord => this._formatLogRecordForFile(logRecord, appsFormat, codec, format)).join("\n").trim();
+        if (formattedLogs.length > 0) {
+            formattedLogs += "\n";
+        }
+        fs.appendFileSync(file, formattedLogs, "utf8");
     }
 
     _prepareApplicationFormat(apps, withColour) {
