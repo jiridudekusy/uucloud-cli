@@ -20,13 +20,14 @@ const fs = require("fs");
 const {compileExpression} = require("filtrex");
 const readLastLines = require('read-last-lines');
 const Handlebars = require("handlebars");
+const UuCloudClient = require("../uucloud/uucloud-client");
 const helpers = require("handlebars-helpers")({
     handlebars: Handlebars
 });
 
 Handlebars.registerHelper("subAppCode", (appDeploymentUri, options) => {
     if (options.data.root._appsFormat[appDeploymentUri]) {
-        return options.data.root._appsFormat[appDeploymentUri].code;
+        return options.data.root._appsFormat[appDeploymentUri].fomattedCode;
     } else {
         return "UNKNOWN.APP |";
     }
@@ -234,9 +235,11 @@ In case that you want get logs via asid just put it into command line on place w
               In this mode you identify uuApps by specifying their full deployment uri. You can obtain the uri from deployment configuration of the application. Only this mode works with -n.
               2) {bold Specify asid or part of it}
               This mode works very similar to docker command but instead of container id you are using asid. You can find asid in output of uucloud ps. It is not required to specify full asid. It is enough to write just few starting characters.
+              3) {bold Specify uuSubApp code or part of it}
+              This is the comfortable way how to specify uuApps if you don't use tags. You can find uuSubApp code in output of uucloud ps. It is not required to specify full code. It is enough to write just any part of it. It even works in similar way to tags so comma means and, space means or.  .
 
-              3) {bold Specify tags}
-              This is most comfortable way how to specify uuApps, but it requires changes in deployment configuration. Any app can have in ints deployment configuration following property :
+              4) {bold Specify tags}
+              This is the most comfortable way how to specify uuApps, but it requires changes in deployment configuration. Any app can have in ints deployment configuration following property :
               tags:"<tag1>,<tag2>,<tag3>"
 
               Any number of tags can be specified, however thay have to be alphanumeric and separated by comma.
@@ -289,7 +292,7 @@ class LogsTask {
                 this._taskUtils.testOption(cv.includes(":"), "Critera value mus be in form [key]:[value]");
                 let key = cv.slice(0, cv.indexOf(":"));
                 let value = cv.slice(cv.indexOf(":") + 1);
-                ;criteria[key] = value;
+                criteria[key] = value;
             });
         }
         if (options.timeWindowType) {
@@ -298,7 +301,7 @@ class LogsTask {
         }
         if (options.follow) {
             this._taskUtils.testOption(!options.output, "You cannot uses output together with follow.");
-            console.error(apps.map(app => "Following logs for application : " + app.appDeploymentUri).join("\n"));
+            console.error(apps.map(app => `Following logs for application ${app.code}: ` + app.appDeploymentUri).join("\n"));
             await this.followLog(apps, filterFn, criteria, options);
         } else {
             let from;
@@ -321,7 +324,7 @@ class LogsTask {
             if (from) {
                 console.error(`Getting logs since : ${from.toISOString()} until: ${to.toISOString()}`);
             }
-            console.error(apps.map(app => "Getting logs for application : " + app.appDeploymentUri).join("\n"));
+            console.error(apps.map(app => `Getting logs for application ${app.code}:` + app.appDeploymentUri).join("\n"));
             if (!options.output) {
                 this._taskUtils.testOption(apps.length === 1, "You can follow logs up to 10 applications, but you can list history logs only for 1.");
             }
@@ -333,16 +336,19 @@ class LogsTask {
         let deployList;
         if (present && present.mocks && present.mocks.getAppDeploymentList) {
             deployList = present.mocks.getAppDeploymentList;
+            //FIXME transform
         } else {
             let oidcToken = await new OidcTokenProvider().getToken(options);
-            let uuCloud = new UuCloud({oidcToken, c3Uri: options["c3-uri"]});
+            let uuCloud = new UuCloudClient(oidcToken, options);
             deployList = await uuCloud.getAppDeploymentList(resourcePoolUri);
         }
         let filteredApps = filterAppDeployments(deployList, appsIdentifiers);
 
         let apps = filteredApps.map(app => {
             return {
-                code: app.code, appDeploymentUri: app.uri
+                code: app.code,
+                appDeploymentUri: app.uri || app.asid,
+                asid: app.asid
             }
         });
         return apps;
@@ -430,8 +436,13 @@ class LogsTask {
     }
 
     _getLogFile(output, app) {
-        let uesUri = UESUri.parse(app.appDeploymentUri);
-        let filename = `${uesUri.object.code || ""}-${uesUri.object.id}.log`;
+        let filename;
+        try {
+            let uesUri = UESUri.parse(app.appDeploymentUri);
+            filename = `${uesUri.object.code || ""}-${uesUri.object.id}.log`;
+        } catch (e) {
+            filename = `${app.code || ""}-${app.asid}.log`
+        }
         let file = path.resolve(output, filename);
         return file;
     }
@@ -439,18 +450,18 @@ class LogsTask {
     _storeLogs(output, app, appsFormat, codec, format, logs) {
         let uesUri = UESUri.parse(app.appDeploymentUri);
         let file = this._getLogFile(output, app);
-        console.error(`Storing ${logs.length} for app ${uesUri.object.code} into file ${file}`);
+        console.error(`Storing ${logs.length} for app ${app.code} into file ${file}`);
         fs.appendFileSync(file, logs.map(logRecord => this._formatLogRecordForFile(logRecord, appsFormat, codec, format)).join("\n").trim(), "utf8");
     }
 
     _prepareApplicationFormat(apps, withColour) {
         let maxLength = apps.reduce((acc, app) => app.code.length > acc ? app.code.length : acc, 0);
         apps = apps.map((app, index) => {
-            app.code = app.code.padEnd(maxLength, " ");
+            app.fomattedCode = app.code.padEnd(maxLength, " ");
             if (withColour) {
-                app.code = APPLICATION_COLORS[index % APPLICATION_COLORS.length](app.code + " |");
+                app.fomattedCode = APPLICATION_COLORS[index % APPLICATION_COLORS.length](app.fomattedCode + " |");
             } else {
-                app.code = app.code + " |";
+                app.fomattedCode = app.fomattedCode + " |";
             }
             return app;
         });

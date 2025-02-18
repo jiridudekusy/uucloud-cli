@@ -91,10 +91,16 @@ Example of usage from config.json:
    
 # Release Notes
 
+0.18.0
+------
+- add full support for uuCloudg02 in `ps` and `logs` commands. 
+  - you can specify `universe-uri` and resource pool oid instead of resource pool UESURI
+  - you can filter applications by their code (in addition to uri,  ASID and tags) 
+
 0.16.3
 ------
 - bugfix: uuClougLogStoreg02 - fixed scope while using custom oidc with vault strategy
-- 
+
   0.16.2
 ------
 - bugfix: uuClougLogStoreg02 - fixed using custom oidc 

@@ -1,10 +1,10 @@
 const Table = require('cli-table2');
 const OidcTokenProvider = require("../oidc-token-provider");
-const UuCloud = require("../uucloud/uucloud");
 const {commonOptionsDefinitionsWithPresentAndApps, verifyCommonOptionsDefinitionsWithPresent} = require("../misc/common-tasks-option");
 const {filterAppDeployments} = require("../uucloud/uucloud-utils");
 const Config = require("../misc/config");
 const TaskUtils = require("../misc/task-utils");
+const UuCloudClient = require("../uucloud/uucloud-client")
 
 const optionsDefinitions = [
   ...commonOptionsDefinitionsWithPresentAndApps,
@@ -55,9 +55,10 @@ class PsTask {
     let deployList;
     if (present && present.mocks && present.mocks.getAppDeploymentList) {
       deployList = present.mocks.getAppDeploymentList;
+      //FIXME transform to uuCloudClient response
     } else {
       let oidcToken = await new OidcTokenProvider().getToken(options);
-      let uuCloud = new UuCloud({oidcToken, c3Uri: options["c3-uri"]});
+      let uuCloud = new UuCloudClient(oidcToken, options);
       deployList = await uuCloud.getAppDeploymentList(resourcePoolUri);
     }
     if (options.codec === "table") {
@@ -74,7 +75,8 @@ class PsTask {
     } else {
       filteredPageEntries = deployList;
     }
-    console.log(JSON.stringify(filteredPageEntries, null, 2));
+    filteredPageEntries = filteredPageEntries.map(item => item.data);
+    console.log(JSON.stringify({itemList:filteredPageEntries}, null, 2));
   }
 
   _printTable(deployList, apps) {
@@ -83,10 +85,10 @@ class PsTask {
       colWidths: [34, 50, 20, 20, 12, 13, 10, 10,12]
     });
     // let pageEntries
-    let pageEntries = deployList.pageEntries;
+    let itemList = deployList;
     let filteredPageEntries = filterAppDeployments(deployList, apps);
-    let filteredRecords = filteredPageEntries.map(this._transformDeploymentEntry);
-    let allRecords = pageEntries.map(this._transformDeploymentEntry);
+    let filteredRecords = filteredPageEntries;//.map(this._transformDeploymentEntry);
+    let allRecords = itemList;//.map(this._transformDeploymentEntry);
     let totalFiltered = this._countTotal(filteredRecords, "Total filtered");
     let totalAll = this._countTotal(allRecords, "Total");
     if (totalAll.nodeCount != totalFiltered.nodeCount) {

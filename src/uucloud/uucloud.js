@@ -7,55 +7,85 @@ const logger = LoggerFactory.get("UuCloud");
 const DEPLOY_LIST_URI = "uu-c3/AppDeployment/getAppDeploymentList/exec";
 
 const HEADERS = {
-  "Accept": "application/json",
-  "Content-type": "application/json"
+    "Accept": "application/json",
+    "Content-type": "application/json"
 };
 
 class UuCloud {
-  constructor(config) {
-    this._config = config;
-    this._appClient = new AppClient(config.oidcToken);
-    if (!this._config.c3Uri) {
-      this._config.c3Uri = this._appClient.c3BaseUri;
-    }
-    if (!this._config.c3Uri.endsWith("/")) {
-      this._config.c3Uri += "/";
-    }
-  }
-
-  _buildGetAppDeploymentListCmdUri(appDeploymentUri) {
-    return `${this._config.c3Uri}${DEPLOY_LIST_URI}`
-  }
-
-  async getAppDeploymentList(resourcePoolUri) {
-    let deployList;
-    for (let rp of resourcePoolUri) {
-      //FIXME: CmdHelper.buildCmd2Url does not encode  appDeploymentUri
-      let result = await this._executeCommand(CmdHelper.buildCmd2Url(this._buildGetAppDeploymentListCmdUri(), encodeURIComponent(rp)), "get", null, {}, HEADERS);
-      result = JSON.parse(result.body);
-      if(!deployList){
-        deployList = result;
-      }else{
-        deployList.pageEntries.push(...result.pageEntries);
-        deployList.totalSize += result.totalSize;
-      }
+    constructor(config) {
+        this._config = config;
+        this._appClient = new AppClient(config.oidcToken);
+        if (!this._config.c3Uri) {
+            this._config.c3Uri = this._appClient.c3BaseUri;
+        }
+        if (!this._config.c3Uri.endsWith("/")) {
+            this._config.c3Uri += "/";
+        }
     }
 
-    return deployList;
-  }
-
-  async _executeCommand(url, method, params, options, headers, tryNumber = 0) {
-    try {
-      return await this._appClient.exchange(url, method, params, options, headers);
-    } catch (err) {
-      if (tryNumber > 10) {
-        logger.error(`All retries has failed.`, err);
-        throw err;
-      }
-      logger.warn(`Request failed retrying #${tryNumber + 1}....`)
-      return await this._executeCommand(url, method, params, options, headers, ++tryNumber);
+    _buildGetAppDeploymentListCmdUri(appDeploymentUri) {
+        return `${this._config.c3Uri}${DEPLOY_LIST_URI}`
     }
-  }
+
+    async getAppDeploymentList(resourcePoolUri) {
+        let deployList;
+        for (let rp of resourcePoolUri) {
+            //FIXME: CmdHelper.buildCmd2Url does not encode  appDeploymentUri
+            let result = await this._executeCommand(CmdHelper.buildCmd2Url(this._buildGetAppDeploymentListCmdUri(), encodeURIComponent(rp)), "get", null, {}, HEADERS);
+            result = JSON.parse(result.body);
+            if (!deployList) {
+                deployList = result;
+            } else {
+                deployList.pageEntries.push(...result.pageEntries);
+                deployList.totalSize += result.totalSize;
+            }
+        }
+        return deployList.pageEntries.map(item => {
+            let record = {};
+            record.uri = item.uri;
+            record.code = item.code;
+            record.asid = item.asid;
+            record.version = item.version;
+            //FIXME: asi jich muze byt vice, nebo zadna
+            if (item.config && item.config.deployUnits && item.config.deployUnits[0]) {
+                record.nodeSize = item.config.deployUnits[0].nodeSize;
+            } else {
+                record.nodeSize = "";
+            }
+            record.nodeCount = 0;
+            if (item.nodeSets) {
+                record.nodeCount = item.nodeSets.reduce((count, nodeSet) => count + nodeSet.nodeCount, 0);
+            }
+
+            record.tags = "";
+            if (item.config.deploymentTimeConfig && item.config.deploymentTimeConfig.tags) {
+                record.tags = item.config.deploymentTimeConfig.tags;
+            }
+            record.cpu = 0;
+            record.memory = 0;
+            if (item.allocatedCapacity) {
+                record.cpu = item.allocatedCapacity.cpu;
+                record.memory = item.allocatedCapacity.mem;
+            }
+            record.state = item.state;
+            record.data = item;
+            return record;
+        });
+        return deployList;
+    }
+
+    async _executeCommand(url, method, params, options, headers, tryNumber = 0) {
+        try {
+            return await this._appClient.exchange(url, method, params, options, headers);
+        } catch (err) {
+            if (tryNumber > 10) {
+                logger.error(`All retries has failed.`, err);
+                throw err;
+            }
+            logger.warn(`Request failed retrying #${tryNumber + 1}....`)
+            return await this._executeCommand(url, method, params, options, headers, ++tryNumber);
+        }
+    }
 
 }
 

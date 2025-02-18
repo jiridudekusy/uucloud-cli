@@ -51,7 +51,12 @@ const commonOptionsDefinitionsWithResourcePool = [
         alias: "r",
         type: String,
         multiple: true,
-        description: "uuCloud Resource pool uri or multiple uris."
+        description: "uuCloud Resource pool oid/uri or multiple oids/uris."
+    },
+    {
+        name:"universe-uri",
+        type: String,
+        description: "Use uuCloudUniverse (instead of uuCloudg01)."
     },
     {
         name: "c3-uri",
@@ -110,7 +115,11 @@ function verifyCommonOptionsDefinitionsWithResourcePool(options, taskUtils) {
         if (!Array.isArray(options.resourcePool)) {
             options.resourcePool = [options.resourcePool];
         }
-        options.resourcePool.forEach(r =>  taskUtils.testOption(UESUri.parse(r), "Resource pool uri must be valid UES uri."));
+        if(options["universe-uri"]){
+
+        }else {
+            options.resourcePool.forEach(r => taskUtils.testOption(UESUri.parse(r), "Resource pool uri must be valid UES uri."));
+        }
     }
 }
 
