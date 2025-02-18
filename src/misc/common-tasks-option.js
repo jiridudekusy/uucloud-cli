@@ -16,6 +16,11 @@ const commonOptionsDefinitionsAuthentication = [
         description: "Type of authentication used for uuC3 and uuLogStore. It supports oidc(default), basic(http basic auth) ."
     },
     {
+        name: "oidc-uri",
+        type: String,
+        description: "Use different OIDC server than default."
+    },
+    {
         name: "user",
         alias: "u",
         type: String,

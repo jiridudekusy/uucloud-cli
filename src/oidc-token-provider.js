@@ -1,4 +1,5 @@
-const OidcToken = require("uu_appg01_devkit-common/src/scripts/oidc-token");
+Config = require("uu_appg01_core-utils").Config;
+const OidcToken = require("./devkit/oidc-token");
 const BasicAuth = require("uu_appg01_devkit-common/src/scripts/basic-auth");
 const homedir = require("os").homedir();
 const path = require("path");
@@ -79,6 +80,9 @@ class OidcTokenProvider {
     }
     let oidcToken;
     if (type === "oidc") {
+      if(options["oidc-uri"]){
+        Config.set("uu_oidc_server_uri", options["oidc-uri"]);        
+      }
       oidcToken = new CustomOidcToken(path.join(homedir, ".uucloud-cli", "work"));
     } else {
       oidcToken = new CustomBasicAuth();

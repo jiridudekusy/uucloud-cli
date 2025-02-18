@@ -91,10 +91,18 @@ Example of usage from config.json:
    
 # Release Notes
 
+0.16.3
+------
+- bugfix: uuClougLogStoreg02 - fixed scope while using custom oidc with vault strategy
+- 
+  0.16.2
+------
+- bugfix: uuClougLogStoreg02 - fixed using custom oidc 
+
 0.16.1
 ------
 - bugfix: uuClougLogStoreg02 - fixed obtaining logs from defined interval to list more that first page
-- 
+ 
 0.16.0
 ------
 - add support for uuClougLogStoreg02
