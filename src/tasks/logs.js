@@ -261,9 +261,13 @@ class LogsTask {
         this._opts = opts;
     }
 
-    async execute(cliArgs) {
-
-        let options = this._taskUtils.parseCliArguments(cliArgs);
+    async execute(cliArgs, skipParsing = false) {
+        let options;
+        if (!skipParsing) {
+            options = this._taskUtils.parseCliArguments(cliArgs);
+        }else{
+            options = cliArgs;
+        }
         verifyCommonOptionsDefinitionsWithPresent(options, this._taskUtils);
         this._taskUtils.testOption(options.apps && options.apps.length > 0, "You must specify at least 1 app.");
         if (options.follow && (options.since || options.tail || options.until)) {
