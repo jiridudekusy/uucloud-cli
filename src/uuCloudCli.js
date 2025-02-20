@@ -2,6 +2,7 @@ const currentDir = process.cwd();
 const LogsTask = require("./tasks/logs");
 const PsTask = require("./tasks/ps");
 const UseTask = require("./tasks/use");
+const InteractiveTask = require("./tasks/interactive");
 const commandLineArgs = require('command-line-args');
 const commandLineUsage = require('command-line-usage');
 const updateNotifier = require('update-notifier');
@@ -44,7 +45,7 @@ async function execute() {
     notifier.notify({isGlobal: true, defer: false});
     console.error("Press any key to continue...");
     await keypress();
-  };
+  }
 
   const mainDefinitions = [
     {name: 'command', defaultOption: true}
@@ -72,6 +73,8 @@ async function execute() {
     task = new LogsTask(opts);
   } else if(mainOptions.command === "use"){
     task = new UseTask(opts);
+  } else if(mainOptions.command === "i"){
+    task = new InteractiveTask(opts);
   }
 
   if (!task) {

@@ -10,7 +10,7 @@ class UuUniverseClient {
     async getAppDeploymentList(resourcePoolOid) {
         let deployList = [];
         for (let rp of resourcePoolOid) {
-            let res =  await this.#commandGet("uuSubAppInstanceWorkload/list", {uuAppResourcePoolOid: rp});
+            let res = await this.#commandGet("uuSubAppInstanceWorkload/list", {uuAppResourcePoolOid: rp});
             deployList = deployList.concat(res.itemList);
         }
         deployList = deployList.map(item => ({
@@ -18,7 +18,7 @@ class UuUniverseClient {
             asid: item.asid,
             code: item.urlPath,
             version: item.version,
-            tags:"",
+            tags: "",
             nodeSize: null,
             nodeCount: null,
             cpu: null,
@@ -29,16 +29,34 @@ class UuUniverseClient {
         return deployList;
     }
 
+    async getUuAppResourcePool(reourcePoolOid) {
+        return await this.#commandGet("uuAppResourcePool/get", {oid: reourcePoolOid});
+    }
+
+    async getAwidCards(uuSubAppDeployment) {
+        let response = await this.#commandGet("uuSubAppInstanceWorkload/awidCard/list", {
+            asid: uuSubAppDeployment.asid,
+            extended: true
+        });
+        return response.itemList.map(item => {
+            let uri = Uri.createBuilder().parse(response.extendedData.uuSubAppInstanceWorkloadMap[item.uuSubAppInstanceWorkloadOid].uuSubAppInstanceBaseUriList[0]);
+            return {
+                ...item,
+                awidUri: uri.setAwid(item.targetAwid).toUri().toString()
+            }
+        });
+    }
+
     async #commandGet(commandName, dtoIn) {
         const commandUri = Uri.createBuilder().parse(this.config.universeUri)
             .setUseCase(commandName)
             .clearParameters().toUri();
-        const headers =  {Authorization: `${await this.token.get()}`};
+        const headers = {Authorization: `${await this.token.get()}`};
         let result;
         try {
             result = await AppClient.get(commandUri.toString(), dtoIn, {headers});
         } catch (e) {
-            if(e.dtoOut) {
+            if (e.dtoOut) {
                 console.error(JSON.stringify(e.dtoOut, null, 2))
             }
             throw e;
