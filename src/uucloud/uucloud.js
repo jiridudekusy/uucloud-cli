@@ -69,6 +69,7 @@ class UuCloud {
             }
             record.state = item.state;
             record.data = item;
+            record.uuAppServerEnvironment = item.config.deploymentTimeConfig;
             return record;
         });
         return deployList;

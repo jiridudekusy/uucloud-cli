@@ -39,6 +39,17 @@ const commonOptionsDefinitionsAuthentication = [
         description: "Display debug output"
     },
     {
+        name: "insecure",
+        alias: "k",
+        type: Boolean,
+        description: "Allow insecure server connections"
+    },
+    {
+        name: "cacert",
+        type: String,
+        description: "Extra CA certificates to verify peer against"
+    },
+    {
         name: "passwordFile",
         type: String,
         description: "File containing ac1 and ac2. (2 lines: accessCode1=... and accessCode2=...)"
@@ -95,6 +106,23 @@ function verifyCommonOptionsDefinitionsAuthentication(options, taskUtils) {
         Config.set("log_level", "WARN");
         LoggerFactory.configureAll();
     }
+    
+    // Handle insecure flag by setting NODE_TLS_REJECT_UNAUTHORIZED env variable
+    if (options.insecure) {
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+        console.error("Warning: Using --insecure flag. SSL certificate validation is disabled.");
+    }
+    
+    // Handle cacert option by setting the NODE_EXTRA_CA_CERTS environment variable
+    if (options.cacert) {
+        // Check if the file exists
+        if (!fs.existsSync(options.cacert)) {
+            throw new Error(`CA certificate file not found: ${options.cacert}`);
+        }
+        process.env.NODE_EXTRA_CA_CERTS = options.cacert;
+        console.error(`Using extra CA certificates from: ${options.cacert}`);
+    }
+    
     if (options.authentication) {
         taskUtils.testOption(["browser", "vault", "interactive", "passwordFile"].indexOf(options.authentication) > -1, "Invalid authentication.");
         if (options.authentication === "browser" || options.authentication === "passwordFile") {
