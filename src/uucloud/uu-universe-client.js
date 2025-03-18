@@ -24,6 +24,7 @@ class UuUniverseClient {
             cpu: null,
             memory: null,
             state: item.state,
+            uuAppServerEnvironment: item.uuAppServerEnvironment,
             data: item
         }));
         return deployList;
