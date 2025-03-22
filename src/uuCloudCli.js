@@ -1,14 +1,11 @@
 const currentDir = process.cwd();
-const LogsTask = require("./tasks/logs");
-const PsTask = require("./tasks/ps");
-const UseTask = require("./tasks/use");
-const InteractiveTask = require("./tasks/interactive");
 const commandLineArgs = require('command-line-args');
 const commandLineUsage = require('command-line-usage');
 const updateNotifier = require('update-notifier');
 const pkg = require('../package.json');
 const Config = require("./misc/config");
 const { parseArgsStringToArgv } = require('string-argv');
+const container = require('./di/container-setup');
 
 const keypress = async () => {
   process.stdin.setRawMode(true)
@@ -40,6 +37,8 @@ const sections = [
 ];
 
 async function execute() {
+  const console = container.get('console');
+  
   let notifier = updateNotifier({pkg});
   if(notifier.update && process.stdout.isTTY && notifier.update.current != notifier.update.latest){
     notifier.notify({isGlobal: true, defer: false});
@@ -52,39 +51,67 @@ async function execute() {
   ];
 
   let mainOptions = commandLineArgs(mainDefinitions, {stopAtFirstUnknown: true});
-  let task;
-  let opts = {currentDir};
+  let CommandClass;
+  let argv = mainOptions._unknown || [];
   let shortcuts = Config.all.shortcuts || [];
+  
   if(shortcuts.length > 0) {
     sections.push({
       header: 'Shortcuts',
       content: shortcuts.map(s => {return {name: s.shortcut, summary: s.command}})
     });
   }
-  let shortcut = shortcuts.find(i => i.shortcut === mainOptions.command);
-  if(shortcut){
-    let parsedShortcut = parseArgsStringToArgv(shortcut.command);
-    mainOptions = commandLineArgs(mainDefinitions, {stopAtFirstUnknown: true, argv: [...parsedShortcut, ...(mainOptions._unknown||[])]})
+  
+  // Check if there's a --no-shortcut option to disable shortcut processing
+  const disableShortcuts = argv.includes('--no-shortcut');
+  if (disableShortcuts) {
+    // Remove the --no-shortcut argument
+    argv = argv.filter(arg => arg !== '--no-shortcut');
+    mainOptions._unknown = argv;
+  } else {
+    let shortcut = shortcuts.find(i => i.shortcut === mainOptions.command);
+    if(shortcut){
+      let parsedShortcut = parseArgsStringToArgv(shortcut.command);
+      mainOptions = commandLineArgs(mainDefinitions, {stopAtFirstUnknown: true, argv: [...parsedShortcut, ...(mainOptions._unknown||[])]})
+    }
   }
-  const argv = mainOptions._unknown || [];
+  
+  argv = mainOptions._unknown || [];
+  
+  // Determine which command to use
   if (mainOptions.command === "ps") {
-    task = new PsTask(opts);
+    CommandClass = require('./commands/PsCommand');
   } else if (mainOptions.command === "logs") {
-    task = new LogsTask(opts);
+    CommandClass = require('./tasks/logs');
   } else if(mainOptions.command === "use"){
-    task = new UseTask(opts);
+    CommandClass = require('./tasks/use');
   } else if(mainOptions.command === "i"){
-    task = new InteractiveTask(opts);
+    CommandClass = require('./tasks/interactive');
   }
 
-  if (!task) {
+  if (!CommandClass) {
     console.error("Unknown command");
     const usage = commandLineUsage(sections);
     console.error(usage);
     return;
   }
 
-  await task.execute(argv);
+  try {
+    // Check if it's a new Command implementation
+    if (CommandClass.prototype && CommandClass.prototype.constructor && CommandClass.prototype instanceof require('./interfaces/Command')) {
+      const command = container.createCommand(CommandClass);
+      await command.execute(argv);
+    } else {
+      // Legacy task execution
+      const task = new CommandClass({currentDir});
+      await task.execute(argv);
+    }
+  } catch (error) {
+    console.error(`Error executing command: ${error.message}`);
+    if (process.env.DEBUG) {
+      console.error(error.stack);
+    }
+  }
 }
 
 module.exports = execute;
