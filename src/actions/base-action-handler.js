@@ -33,7 +33,9 @@ class BaseActionHandler {
       {
         name: "Show appstatus",
         value: "showAppstatus",
-        isAvailable: async (subAppDeployment, context = {}) => true,
+        isAvailable: async (subAppDeployment, context = {}) => {
+          return !!this.getAppStatusConsoleUri(subAppDeployment);
+        },
         execute: this.showAppStatus.bind(this)
       },
       {
@@ -173,7 +175,7 @@ class BaseActionHandler {
   }
 
   async showAppStatus(subAppDeployment, context = {}) {
-    let consoleUri = this.getAppConfig(subAppDeployment, "uu_app_status_progress_base_uri", "uuAppStatus.progressBaseUri");
+    let consoleUri = this.getAppStatusConsoleUri(subAppDeployment);
     if (!consoleUri) {
       throw new Error("Console uri not found in subApp deployment data.");
     }
@@ -182,6 +184,10 @@ class BaseActionHandler {
     let consoleClient = new ConsoleClient({ consoleUri: consoleUri, oidcToken });
     let status = await consoleClient.getAppStatus(subAppDeployment);
     console.log(JSON.stringify(status, null, 2));
+  }
+
+  getAppStatusConsoleUri(subAppDeployment) {
+    return this.getAppConfig(subAppDeployment, "uu_app_status_progress_base_uri", "uuAppStatus.progressBaseUri");
   }
 
   async getAppDeploymentOidcToken(subAppDeployment) {
