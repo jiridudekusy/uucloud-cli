@@ -12,13 +12,13 @@ const HEADERS = {
 };
 
 class UuCloud {
-    constructor(config) {
-        this._config = config;
-        this._appClient = new AppClient(config.oidcToken);
+    constructor(config = {}) {
+        this._config = config || {};
+        this._appClient = new AppClient(config.oidcToken || "");
         if (!this._config.c3Uri) {
-            this._config.c3Uri = this._appClient.c3BaseUri;
+            this._config.c3Uri = this._appClient.c3BaseUri || "";
         }
-        if (!this._config.c3Uri.endsWith("/")) {
+        if (this._config.c3Uri && !this._config.c3Uri.endsWith("/")) {
             this._config.c3Uri += "/";
         }
     }
