@@ -65,11 +65,11 @@ class InteractiveTask {
         // Get the proper action handler for this subapp code
         const handler = actionHandlerFactory.getHandler(subAppDeployment.code, handlerOpts);
         
-        // Get the action menu from the handler (it may include custom actions)
-        const actionMenu = handler.getActionMenu();
+        // Get the action menu organized by groups from the handler
+        const actionGroups = await handler.getGroupedActionMenu(subAppDeployment.code, options, selectedSubapp, subAppDeployment, deployList);
         
         // Show the action menu and process the selected action
-        const selectedAction = await searchPrompt("Select action:", actionMenu);
+        const selectedAction = await searchPrompt("Select action:", actionGroups);
         await handler.processAction(selectedAction, options, selectedSubapp, subAppDeployment, deployList);
     }
 }

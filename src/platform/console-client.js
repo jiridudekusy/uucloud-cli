@@ -11,6 +11,14 @@ class ConsoleClient {
         return this.#commandGet("progressBus/load", {code: `uuappstatus_${appDepoyment.asid}`, progressDataLoadStrategy: "nohistory"});
     }
 
+    async listConsoles() {
+        return this.#commandGet("console/list", {});
+    }
+
+    async listProgressBuses() {
+        return this.#commandGet("progressBus/list", {});
+    }
+
     async #commandGet(commandName, dtoIn) {
         const commandUri = Uri.createBuilder().parse(this.config.consoleUri)
             .setUseCase(commandName)
