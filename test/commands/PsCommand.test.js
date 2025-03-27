@@ -7,7 +7,6 @@ const MockTaskUtils = require('../mocks/MockTaskUtils');
 describe('PsCommand', () => {
   let command;
   let tokenProvider;
-  let clientFactory;
   let client;
   let console;
   let taskUtils;
@@ -16,14 +15,20 @@ describe('PsCommand', () => {
     // Setup mock dependencies
     tokenProvider = new MockTokenProvider();
     client = new MockCloudClient();
-    clientFactory = jest.fn().mockReturnValue(client);
+    
+    // Create a serviceFactory that returns the appropriate mock based on the interface type
+    const serviceFactory = jest.fn((type, ...args) => {
+      if (type === 'CloudClient') return client;
+      return null;
+    });
+    
     console = new MockConsole();
     taskUtils = new MockTaskUtils();
     
     // Create command with mock dependencies
     command = new PsCommand({
       tokenProvider,
-      clientFactory,
+      serviceFactory,
       console,
       taskUtils
     });
@@ -68,7 +73,6 @@ describe('PsCommand', () => {
     
     // Assert
     expect(tokenProvider.getToken).toHaveBeenCalled();
-    expect(clientFactory).toHaveBeenCalled();
     expect(client.getAppDeploymentList).toHaveBeenCalledWith(['test-resource-pool']);
     expect(console.log).toHaveBeenCalled();
   });
@@ -100,7 +104,6 @@ describe('PsCommand', () => {
     
     // Assert
     expect(tokenProvider.getToken).toHaveBeenCalled();
-    expect(clientFactory).toHaveBeenCalled();
     expect(client.getAppDeploymentList).toHaveBeenCalledWith(['test-resource-pool']);
     expect(console.log).toHaveBeenCalled();
     
@@ -130,7 +133,6 @@ describe('PsCommand', () => {
     
     // Assert
     expect(tokenProvider.getToken).not.toHaveBeenCalled();
-    expect(clientFactory).not.toHaveBeenCalled();
     expect(client.getAppDeploymentList).not.toHaveBeenCalled();
     expect(console.log).toHaveBeenCalled();
   });

@@ -33,6 +33,16 @@ const help = [
  */
 class PsCommand extends Command {
   /**
+   * Command options definitions
+   */
+  static optionsDefinitions = optionsDefinitions;
+  
+  /**
+   * Command help sections
+   */
+  static help = help;
+  
+  /**
    * Create a new PsCommand instance
    * @param {Object} dependencies - Injected dependencies
    */
@@ -41,16 +51,9 @@ class PsCommand extends Command {
     
     // Extract dependencies
     this._tokenProvider = dependencies.tokenProvider;
-    this._clientFactory = dependencies.clientFactory;
+    this._serviceFactory = dependencies.serviceFactory;
     this._console = dependencies.console;
-    
-    // Create TaskUtils with the correct options
-    if (dependencies.taskUtils) {
-      this._taskUtils = dependencies.taskUtils;
-    } else {
-      const TaskUtils = require('../misc/task-utils');
-      this._taskUtils = new TaskUtils(optionsDefinitions, help);
-    }
+    this._taskUtils = dependencies.taskUtils;
   }
   
   /**
@@ -104,7 +107,7 @@ class PsCommand extends Command {
       const oidcToken = await this._tokenProvider.getToken(options);
       
       // Create the cloud client using CloudClient interface
-      const uuCloud = this._clientFactory('CloudClient', oidcToken, options);
+      const uuCloud = this._serviceFactory('CloudClient', oidcToken, options);
       
       deployList = await uuCloud.getAppDeploymentList(resourcePoolUri);
     }

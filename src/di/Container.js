@@ -83,14 +83,26 @@ class Container {
    * @returns {Object} - Command instance
    */
   createCommand(CommandClass) {
+    // Create TaskUtils for this command if needed
+    let taskUtils;
+    if (this.has('taskUtils')) {
+      taskUtils = this.get('taskUtils');
+    } else {
+      const TaskUtils = require('../misc/task-utils');
+      const optionsDefinitions = CommandClass.optionsDefinitions || [];
+      const help = CommandClass.help || [];
+      taskUtils = new TaskUtils(optionsDefinitions, help);
+    }
+    
     return new CommandClass({
       tokenProvider: this.get('tokenProvider'),
-      clientFactory: (interfaceType, token, opts) => {
+      serviceFactory: (interfaceType, ...args) => {
         const factory = this.getImplementationFactory(interfaceType);
-        return factory(token, opts);
+        return factory(...args);
       },
       console: this.get('console'),
-      fileSystem: this.has('fileSystem') ? this.get('fileSystem') : null
+      fileSystem: this.has('fileSystem') ? this.get('fileSystem') : null,
+      taskUtils: taskUtils
     });
   }
   

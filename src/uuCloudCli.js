@@ -82,7 +82,7 @@ async function execute() {
   if (mainOptions.command === "ps") {
     CommandClass = require('./commands/PsCommand');
   } else if (mainOptions.command === "logs") {
-    CommandClass = require('./tasks/logs');
+    CommandClass = require('./commands/LogsCommand');
   } else if(mainOptions.command === "use"){
     CommandClass = require('./tasks/use');
   } else if(mainOptions.command === "i"){
