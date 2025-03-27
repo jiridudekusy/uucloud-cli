@@ -85,7 +85,7 @@ async function execute() {
   } else if (mainOptions.command === "logs") {
     CommandClass = require('./commands/LogsCommand');
   } else if(mainOptions.command === "use"){
-    CommandClass = require('./tasks/use');
+    CommandClass = require('./commands/UseCommand'); 
   } else if(mainOptions.command === "i"){
     CommandClass = require('./commands/InteractiveCommand');
   }
@@ -98,7 +98,7 @@ async function execute() {
   }
 
   try {
-    // Execute the command through the container
+    // All commands now use the modern Command pattern with DI
     const command = container.createCommand(CommandClass);
     await command.execute(argv);
   } catch (error) {
