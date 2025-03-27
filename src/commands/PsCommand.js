@@ -33,16 +33,6 @@ const help = [
  */
 class PsCommand extends Command {
   /**
-   * Command options definitions
-   */
-  static optionsDefinitions = optionsDefinitions;
-  
-  /**
-   * Command help sections
-   */
-  static help = help;
-  
-  /**
    * Create a new PsCommand instance
    * @param {Object} dependencies - Injected dependencies
    */
@@ -209,5 +199,9 @@ class PsCommand extends Command {
     );
   }
 }
+
+// Set static properties
+PsCommand.optionsDefinitions = optionsDefinitions;
+PsCommand.help = help;
 
 module.exports = PsCommand; 

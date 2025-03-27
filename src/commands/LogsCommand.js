@@ -134,16 +134,6 @@ const help = [{
  */
 class LogsCommand extends Command {
     /**
-     * Command options definitions
-     */
-    static optionsDefinitions = optionsDefinitions;
-    
-    /**
-     * Command help sections
-     */
-    static help = help;
-    
-    /**
      * Create a new LogsCommand instance
      * @param {Object} dependencies - Injected dependencies
      */
@@ -528,5 +518,9 @@ class LogsCommand extends Command {
         logs.length > 0 && this._console.log(logs.map(logRecord => this._formatLogRecord(logRecord, apps, codec, format)).join("\n").trim());
     }
 }
+
+// Set static properties
+LogsCommand.optionsDefinitions = optionsDefinitions;
+LogsCommand.help = help;
 
 module.exports = LogsCommand; 

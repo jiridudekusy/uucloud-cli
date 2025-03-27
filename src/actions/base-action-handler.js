@@ -2,10 +2,11 @@ const { LoggerFactory } = require("uu_appg01_core-logging");
 const logger = LoggerFactory.get("BaseActionHandler");
 const OidcTokenProvider = require("../oidc-token-provider");
 const { Uri } = require("uu_appg01_core-uri");
-const LogsTask = require("../tasks/logs");
+const LogsCommand = require("../commands/LogsCommand");
 const ConsoleClient = require("../platform/console-client");
 const AppServerAuditClient = require("../platform/appserver-audit-client");
 const { searchPrompt } = require("../misc/prompt-utils");
+const container = require("../di/container-setup");
 
 class BaseActionHandler {
   constructor(opts) {
@@ -230,8 +231,10 @@ class BaseActionHandler {
       logger.info(`Discovered logstore: ${logstoreUri}`);
       logsOptions["log-store-uri"] = logstoreUri;
     }
-    let logsTask = new LogsTask(this._opts);
-    await logsTask.execute(logsOptions, true);
+    
+    // Use the container to get an instance of LogsCommand with all dependencies
+    const logsCommand = container.createCommand(LogsCommand);
+    await logsCommand.execute(logsOptions);
   }
 
   async discoverLogStore(uuSubAppDeployment, deployList) {
