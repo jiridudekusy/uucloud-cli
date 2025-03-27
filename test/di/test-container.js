@@ -3,6 +3,7 @@ const MockTokenProvider = require('../mocks/MockTokenProvider');
 const MockCloudClient = require('../mocks/MockCloudClient');
 const MockConsole = require('../mocks/MockConsole');
 const MockTaskUtils = require('../mocks/MockTaskUtils');
+const CloudClient = require('../../src/interfaces/CloudClient');
 
 /**
  * Create a test container with mock dependencies
@@ -16,7 +17,7 @@ function createTestContainer() {
     .register('tokenProvider', new MockTokenProvider())
     .register('console', new MockConsole())
     .register('taskUtils', new MockTaskUtils())
-    .registerFactory('clientFactory', () => new MockCloudClient());
+    .registerService('CloudClient', CloudClient, () => new MockCloudClient());
   
   return container;
 }

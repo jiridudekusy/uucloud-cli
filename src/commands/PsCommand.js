@@ -103,15 +103,8 @@ class PsCommand extends Command {
     } else {
       const oidcToken = await this._tokenProvider.getToken(options);
       
-      // Create the cloud client
-      let uuCloud;
-      if (typeof this._clientFactory === 'function') {
-        uuCloud = this._clientFactory(oidcToken, options);
-      } else {
-        // This fallback is needed for when clientFactory is registered as an object instead of a function
-        const RealCloudClient = require('../implementations/RealCloudClient');
-        uuCloud = new RealCloudClient(oidcToken, options);
-      }
+      // Create the cloud client using CloudClient interface
+      const uuCloud = this._clientFactory('CloudClient', oidcToken, options);
       
       deployList = await uuCloud.getAppDeploymentList(resourcePoolUri);
     }

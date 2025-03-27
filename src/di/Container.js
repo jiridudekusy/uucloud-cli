@@ -8,6 +8,7 @@ class Container {
   constructor() {
     this._services = new Map();
     this._factories = new Map();
+    this._serviceImplementations = new Map();
   }
   
   /**
@@ -33,6 +34,21 @@ class Container {
   }
   
   /**
+   * Register a service with its interface and implementation factory
+   * @param {string} interfaceName - Interface name
+   * @param {Class} interfaceClass - Interface class
+   * @param {Function} implementationFactory - Factory function to create implementation instances
+   * @returns {Container} - The container instance for chaining
+   */
+  registerService(interfaceName, interfaceClass, implementationFactory) {
+    this._serviceImplementations.set(interfaceName, {
+      interface: interfaceClass,
+      factory: implementationFactory
+    });
+    return this;
+  }
+  
+  /**
    * Get a service instance
    * @param {string} name - Service name
    * @returns {Object} - Service instance
@@ -49,6 +65,19 @@ class Container {
   }
   
   /**
+   * Get an implementation factory for a specific interface
+   * @param {string} interfaceName - Interface name
+   * @returns {Function} - Factory function that creates implementation instances
+   * @throws {Error} - If implementation not found
+   */
+  getImplementationFactory(interfaceName) {
+    if (this._serviceImplementations.has(interfaceName)) {
+      return this._serviceImplementations.get(interfaceName).factory;
+    }
+    throw new Error(`Implementation for ${interfaceName} not found`);
+  }
+  
+  /**
    * Create a command instance with dependencies injected
    * @param {Function} CommandClass - Command class constructor
    * @returns {Object} - Command instance
@@ -56,7 +85,10 @@ class Container {
   createCommand(CommandClass) {
     return new CommandClass({
       tokenProvider: this.get('tokenProvider'),
-      clientFactory: this.get('clientFactory'),
+      clientFactory: (interfaceType, token, opts) => {
+        const factory = this.getImplementationFactory(interfaceType);
+        return factory(token, opts);
+      },
       console: this.get('console'),
       fileSystem: this.has('fileSystem') ? this.get('fileSystem') : null
     });
@@ -69,6 +101,15 @@ class Container {
    */
   has(name) {
     return this._services.has(name) || this._factories.has(name);
+  }
+  
+  /**
+   * Check if an implementation for an interface exists
+   * @param {string} interfaceName - Interface name
+   * @returns {boolean} - True if implementation exists
+   */
+  hasImplementation(interfaceName) {
+    return this._serviceImplementations.has(interfaceName);
   }
 }
 
