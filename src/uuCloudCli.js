@@ -31,7 +31,8 @@ const sections = [
       { name: 'help', summary: 'Display this help.' },
       { name: 'use', summary: 'Sets up default parameter values.' },
       { name: 'ps', summary: 'Displays list of deployed uuApps.' },
-      { name: 'logs', summary: 'Fetch the logs of one or more uuApps' }
+      { name: 'logs', summary: 'Fetch the logs of one or more uuApps' },
+      { name: 'i', summary: 'Interactive mode for selecting and operating on deployed uuApps' }
     ]
   }
 ];
@@ -86,7 +87,7 @@ async function execute() {
   } else if(mainOptions.command === "use"){
     CommandClass = require('./tasks/use');
   } else if(mainOptions.command === "i"){
-    CommandClass = require('./tasks/interactive');
+    CommandClass = require('./commands/InteractiveCommand');
   }
 
   if (!CommandClass) {
