@@ -97,15 +97,9 @@ async function execute() {
   }
 
   try {
-    // Check if it's a new Command implementation
-    if (CommandClass.prototype && CommandClass.prototype.constructor && CommandClass.prototype instanceof require('./interfaces/Command')) {
-      const command = container.createCommand(CommandClass);
-      await command.execute(argv);
-    } else {
-      // Legacy task execution
-      const task = new CommandClass({currentDir});
-      await task.execute(argv);
-    }
+    // Execute the command through the container
+    const command = container.createCommand(CommandClass);
+    await command.execute(argv);
   } catch (error) {
     console.error(`Error executing command: ${error.message}`);
     if (process.env.DEBUG) {
