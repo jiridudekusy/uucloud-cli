@@ -268,6 +268,17 @@ class UuLogStore {
                 throw err;
             }
             logger.warn(`Request failed retrying #${tryNumber + 1}....`)
+            // Enhanced error logging: Extract and log the response body for better debugging
+            // This helps identify API error details and improves troubleshooting
+            if(err?.response.body){
+                let body;
+                try {
+                    body = JSON.stringify(JSON.parse(err.response.body), null, 2);
+                } catch (e) {
+                    body = err.response.body;
+                }
+                logger.debug(`Response body ${body  }`)
+            }
             return await this._executeCommand(url, method, params, headers, ++tryNumber);
         }
     }
