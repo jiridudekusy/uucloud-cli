@@ -72,13 +72,11 @@ class InteractiveCommand extends Command {
                 for (const uuAppResourcePoolOid of uuAppResourcePoolOids) {
                     uuAppResourcePools[uuAppResourcePoolOid] = await this._universeClient.getUuAppResourcePool(uuAppResourcePoolOid);
                 }
-                // Added version to the display name to improve deployment identification in the list
                 deployListOptions = deployList.map(item => ({
                     name: `${uuAppResourcePools[item.data.uuAppResourcePoolOid].uuAppResourcePool.name} - ${item.code} - v${item.version} - ${item.asid}`,
                     value: item.asid
                 }));
             } else {
-                // Added version to the display name to improve deployment identification in the list
                 deployListOptions = deployList.map(item => {
                     return {
                         name: `${item.code} - v${item.version} - ${item.asid}`,
