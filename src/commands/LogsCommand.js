@@ -43,8 +43,7 @@ Handlebars.registerHelper("logLevel", (logLevel, options) => {
     }
 });
 
-// Using triple curly braces {{{ }}} for log.message to prevent HTML escaping 
-// This ensures that special characters in log messages are displayed correctly
+// Use triple braces {{{ }}} for log messages to preserve special characters and formatting
 const DEFAULT_LOG_FORMAT = `{{subAppCode log.appDeploymentUri}} {{date log.eventTime 'YYYY-MM-DD HH:mm:ss,SSS'}} {{log.recordType}} [{{log.threadName}}] {{logLevel log.logLevel}} {{log.logger}} - {{{log.message}}} {{log.stackTrace}}`;
 const DEFAULT_LOG_FILE_FORMAT = `{{date log.eventTime "YYYY-MM-DD HH:mm:ss,SSS"}} {{log.recordType}} [{{log.threadName}}] {{logLevel log.logLevel}} {{log.logger}} - {{{log.message}}} {{log.stackTrace}}`;
 
