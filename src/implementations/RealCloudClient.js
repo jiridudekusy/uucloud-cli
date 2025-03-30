@@ -32,6 +32,15 @@ class RealCloudClient extends CloudClient {
   async getUniverseClient() {
     return this.client.getUniverseClient();
   }
+
+  /**
+   * Get the list of AWIDs for a given uuSubApp deployment
+   * @param {Object} subAppDeployment - The subApp deployment object
+   * @returns {Promise<Array>} - List of AWIDs with their properties
+   */
+  async getAwids(subAppDeployment) {
+    return this.client.getAwids(subAppDeployment);
+  }
 }
 
 module.exports = RealCloudClient; 

@@ -11,7 +11,7 @@ const container = require("../di/container-setup");
 class BaseActionHandler {
   constructor(opts) {
     this._opts = opts;
-    this._universeClient = opts.universeClient;
+    this._cloudClient = opts.cloudClient;
     this._standardActions = [
       {
         name: "Follow logs",
@@ -150,9 +150,9 @@ class BaseActionHandler {
   }
 
   async getAwid(subAppDeployment) {
-    let awidCards = await this._universeClient.getAwidCards(subAppDeployment);
-    let awidOptions = awidCards.map(item => ({
-      name: item.targetAwid,
+    let awids = await this._cloudClient.getAwids(subAppDeployment);
+    let awidOptions = awids.map(item => ({
+      name: item.awid,
       value: item
     }));
     if (awidOptions.length === 1) {
@@ -242,11 +242,11 @@ class BaseActionHandler {
       item => item.code === "uu-cloudlogstore-maing02" && 
       item.data.uuAppResourcePoolOid === uuSubAppDeployment.data.uuAppResourcePoolOid
     );
-    let awidCards = await this._universeClient.getAwidCards(logStore);
-    if (awidCards.length !== 1) {
-      throw new Error(`Logstore discovery failed. There is not single awidCard(${awidCards.length} found) for logstore ${logStore.asid}. Please specify logstore uri manually.`);
+    let awids = await this._cloudClient.getAwids(logStore);
+    if (awids.length !== 1) {
+      throw new Error(`Logstore discovery failed. There is not single awid (${awids.length} found) for logstore ${logStore.asid}. Please specify logstore uri manually.`);
     }
-    return awidCards[0].awidUri;
+    return awids[0].awidUri;
   }
 
   async openGui(subAppDeployment, context = {}) {

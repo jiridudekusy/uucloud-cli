@@ -11,6 +11,7 @@ class MockCloudClient extends CloudClient {
     super();
     this.getAppDeploymentList = jest.fn().mockResolvedValue([]);
     this.getUniverseClient = jest.fn().mockResolvedValue(null);
+    this.getAwids = jest.fn().mockResolvedValue([]);
   }
 }
 

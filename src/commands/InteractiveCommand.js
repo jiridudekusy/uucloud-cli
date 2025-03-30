@@ -91,7 +91,7 @@ class InteractiveCommand extends Command {
             
             // Initialize the handler with appropriate options
             const handlerOpts = {
-                universeClient: this._universeClient
+                cloudClient: uuCloud  // Pass the cloud client to the handler
             };
             
             // Get the proper action handler for this subapp code

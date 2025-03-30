@@ -34,7 +34,7 @@ class UuUniverseClient {
         return await this.#commandGet("uuAppResourcePool/get", {oid: reourcePoolOid});
     }
 
-    async getAwidCards(uuSubAppDeployment) {
+    async getAwids(uuSubAppDeployment) {
         let response = await this.#commandGet("uuSubAppInstanceWorkload/awidCard/list", {
             asid: uuSubAppDeployment.asid,
             extended: true
@@ -46,7 +46,8 @@ class UuUniverseClient {
                 awidUri: uri.setAwid(item.targetAwid).toUri().toString()
             }
         });
-    }
+   }
+
 
     async #commandGet(commandName, dtoIn) {
         const commandUri = Uri.createBuilder().parse(this.config.universeUri)
