@@ -22,6 +22,10 @@ class UucloudClient {
             return null;
         }
     }
+
+    async getAwids(subAppDeployment) {
+        return this.provider.getAwids(subAppDeployment);
+    }
 }
 
 module.exports = UucloudClient;
