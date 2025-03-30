@@ -270,7 +270,7 @@ class UuLogStore {
             logger.warn(`Request failed retrying #${tryNumber + 1}....`)
             // Log API response body for detailed error diagnosis
             // Extract the response body from error objects, which contains valuable debugging information            
-            if(err?.response.body){
+            if(err.response && err.response.body){
                 let body;
                 try {
                     // Parse and format JSON response bodies to make error messages more readable            
