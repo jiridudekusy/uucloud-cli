@@ -91,9 +91,10 @@ Example of usage from config.json:
    
 # Release Notes
 
-0.18.1
-------
-- upgrade to appclient 6.x
+1.0.0-beta.1
+------------
+- add intreactive mode
+
 
 0.18.0
 ------
