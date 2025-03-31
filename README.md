@@ -91,6 +91,11 @@ Example of usage from config.json:
    
 # Release Notes
 
+1.0.0-beta.1
+------------
+- add intreactive mode
+
+
 0.18.0
 ------
 - add full support for uuCloudg02 in `ps` and `logs` commands. 
