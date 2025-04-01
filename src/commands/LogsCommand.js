@@ -126,9 +126,129 @@ const help = [{
         example: "uucloud logs --since 24h -o logs dev1",
         description: "Gets logs of all applications with tag \"dev1\" and saves them to directoey \"logs\"."
     },]
-}, 
-// Help sections omitted for brevity - these would be the same as in LogsTask
-];
+}, {
+    header: "How to use uuCloudLogStoreg02 ?", content: [`${`uucloud-cli is able to work with both generations of uuCloudLogstore. The key difference is that uuCloudLogStoreg02
+has usually different uri for each resource pool. To use uuCloudLogStoreg02, it is sufficient just to specify
+its uri via {bold --log-store-uri} option. There are some minor differences in API and uucloud-cli decides
+which version(g01 or g02) API will be uses according to uri. If uri contains uu-cloudlogstore-maing02 then
+g02 API is used.`.replaceAll("\n", " ")} 
+              
+${`Another difference is possibility to get logs via ASID (this has been already possible in uucloud-cli 
+but now it is also possible via uuCloudLogStoreg02 API. It might not seem useful, but it is really useful
+when you have no access list deployed applications in uuCloud resourcePool or when you are using uuCloudg02.
+(uuCloudg02 is not yet integrated into uucloud-cli)
+In case that you want get logs via asid just put it into command line on place where you put appDeploymentUri.`.replaceAll("\n", " ")}
+    `,]
+}, {
+    content: [{
+        example: `uucloud logs -n --log-store-uri https://uuapp.plus4u.net/uu-cloudlogstore-maing02/c4d47fa2794e94324ad884463e28e235 95532238dd9ee74c60ea189ec00e8fc3`,
+        description: "List logs for asid 95532238dd9ee74c60ea189ec00e8fc3 from specified logstore uri. Option -n disables listing of deployed applications."
+    }]
+}, {
+    header: "How does formatting work ?", content: `In case that you are not satisfied with default log record print format, you can specify custom format using option --format.
+              The formatting of log records is done using Handlebars with following extensions:
+              * inclusion of handlebars-helpers (https://github.com/helpers/handlebars-helpers)
+              * 2 custom helpers
+                * loglevel - provides color formatting of log level
+                * subAppCode - provides formatting of appDeploymentUri to colorized sub application code  
+              
+              Each log record has following fields which you can use in format:
+              
+              Common fields
+              * appVersion - version of subApp
+              * runtimeStackCode - code of runtime stack
+              * UUCloudResourcePoolUri - uri of resource pool
+              * resourceGroupCode - name of resource group
+              * hostName - name of host
+              * appDeploymentUri - uri of application deployment. Most likely you will use this with subAppCode handlebars helper
+              * eventTime - time of event as JS date. Most likely you will use this with date handlebars helper
+              * id - id of log record
+              * nodeImageName
+              * traceId - id of request from http header X-Request-ID, calls from subApp to another subApp usually has same traceId so it can be used to trace
+                          the request though multiple subApps
+              * logLevel - level o log record. Most likely you will use this with logLevel handlebars helper
+              * nodeName - uuNode name
+              * message - log message
+              * recordType - type of log record usually ACCESS_LOG or TRACE_LOG        
+              
+              TRACE_LOG fields
+              * logger - name of logger
+              * threadId - id of thread
+              * threadName - name of thread
+              * processId
+              * clientId - oidc client id (btw. this is usually awid/asid code)
+              * resourceUri - path of command
+              * sessionId
+              * identityId - uid of logged identity
+              
+                            
+              ACCESS_LOG fields
+              * remoteIpAddress - ip address of source (however it seems as internal ip of uucloud)
+
+
+              * requestLine - information about request (method, path) - only NodeJS
+              * urlPath - request path - only Java
+              * requestMethod - request http method - only Java
+              * requestSize - size of request - only Java
+              * responseSize - size of response 
+              * responseTime - response time of request - only Java              
+              * userAgent - http client user agent
+              * responseStatus - status of http response`
+
+}, {
+    header: "Format examples", content: [{
+        example: escapeChalk(`uucloud logs -f ues:ABC:DEF:GHI --format "${DEFAULT_LOG_FORMAT}"`),
+        description: "Default format."
+    }]
+}, {
+    header: "How does criteria works ?", content: `In case that you need to find some specific set of log records, you have 2 options.
+    1) Server-side by using --criteria. (more efficient)
+    2) Client-side by using --filter. (not efficient but poweful - described latter)
+
+    By using criteria you are able to use any dtoIn parameter of uuCmd https://uuapp.plus4u.net/uu-bookkit-maing01/8e029f520c1747d3a6b5fa270fe04f15/book/page?code=getRecordList .
+    `
+}, {
+    header: "How does filtering works ?", content: `In case that you need to find some specific set of log records, you can use --filter option.
+    Filtering is realized using filtrex (https://www.npmjs.com/package/filtrex) and you can use all documented functions to filter log records.
+
+    To get list of all log record fields please log in section "How does formatting work ?". For filtering you should not use "log." as prefix before field.
+
+    Please note that filtering is not function of uuLogStore, but it is done on your machine. This means that if you are trying to find one specific record
+    in logs for the whole week, all those logs must be fetched from uuLogStore and filtered on your machine and it could take some time.`
+}, {
+    header: "Format and filtering examples", content: [{
+        example: escapeChalk(String.raw`uucloud logs -f ues:ABC:DEF:GHI --filter "recordType == \"ACCESS_LOG\"" --format "{{date log.eventTime 'YYYY-MM-DD HH:mm:ss,SSS'}} {{log.requestLine}}"`),
+        description: "Print all access log reqcords (works for nodejs only)."
+    }, {
+        example: escapeChalk(String.raw`uucloud logs -f ues:ABC:DEF:GHI --filter "recordType == \"ACCESS_LOG\" and responseTime > 1000" --format "{{date log.eventTime 'YYYY-MM-DD HH:mm:ss,SSS'}} {{log.urlPath}} {{log.responseTime}}"`),
+        description: "Print all access log records with responseTime > 1000ms (works for Java only)."
+    }, {
+        example: escapeChalk(String.raw`uucloud logs -f ues:ABC:DEF:GHI --filter "logLevel == \"ERROR\""`),
+        description: "Print all ERRORS."
+    }]
+}, {
+    header: "How does apps selection work ?", content: `Apps selection works using 4 mechanisms. You can combine all of them together.
+              1) {bold Specify uuAppDeploymentUri}
+              In this mode you identify uuApps by specifying their full deployment uri. You can obtain the uri from deployment configuration of the application. Only this mode works with -n.
+              2) {bold Specify asid or part of it}
+              This mode works very similar to docker command but instead of container id you are using asid. You can find asid in output of uucloud ps. It is not required to specify full asid. It is enough to write just few starting characters.
+              3) {bold Specify uuSubApp code or part of it}
+              This is the comfortable way how to specify uuApps if you don't use tags. You can find uuSubApp code in output of uucloud ps. It is not required to specify full code. It is enough to write just any part of it. It even works in similar way to tags so comma means and, space means or.
+              4) {bold Specify tags}
+              This is the most comfortable way how to specify uuApps, but it requires changes in deployment configuration. Any app can have in ints deployment configuration following property :
+              tags:"<tag1>,<tag2>,<tag3>"
+
+              Any number of tags can be specified, however thay have to be alphanumeric and separated by comma.
+
+              In uucloud ps you can see tags assigned to the application and you can use them to query the logs using following principles.
+              * comma means and
+              * space means or
+
+              {underline Examples}:
+              {bold dev1} = All uuApps in resource pool with tag dev1.
+              {bold dev1 dev2} = All uuApps in resource pool with tag dev1 OR dev2.
+              {bold dev1,odm dev1,control} = All uuApps in resource pool with tags (dev1 AND odm) OR (dev1 AND control).`
+},];
 
 /**
  * Command implementation for the 'logs' command
