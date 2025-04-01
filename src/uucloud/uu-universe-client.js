@@ -13,20 +13,28 @@ class UuUniverseClient {
             let res = await this.#commandGet("uuSubAppInstanceWorkload/list", {uuAppResourcePoolOid: rp});
             deployList = deployList.concat(res.itemList);
         }
-        deployList = deployList.map(item => ({
-            //asid", "uuSubApp", "Version", "Tags", "Node size", "Node Count", "CPU", "Memory", "State"
-            asid: item.asid,
-            code: item.urlPath,
-            version: item.version,
-            tags: "",
-            nodeSize: null,
-            nodeCount: null,
-            cpu: null,
-            memory: null,
-            state: item.state,
-            uuAppServerEnvironment: item.uuAppServerEnvironment,
-            data: item
-        }));
+        deployList = deployList.map(item => {
+            // Extract tags from uuAppServerEnvironment if available
+            let tags = "";
+            if (item.uuAppServerEnvironment && item.uuAppServerEnvironment.tags) {
+                tags = item.uuAppServerEnvironment.tags;
+            }
+            
+            return {
+                //asid", "uuSubApp", "Version", "Tags", "Node size", "Node Count", "CPU", "Memory", "State"
+                asid: item.asid,
+                code: item.urlPath,
+                version: item.version,
+                tags: tags,
+                nodeSize: null,
+                nodeCount: null,
+                cpu: null,
+                memory: null,
+                state: item.state,
+                uuAppServerEnvironment: item.uuAppServerEnvironment,
+                data: item
+            };
+        });
         return deployList;
     }
 
