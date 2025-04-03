@@ -56,7 +56,6 @@ class UuUniverseClient {
         });
    }
 
-
     async #commandGet(commandName, dtoIn) {
         const commandUri = Uri.createBuilder().parse(this.config.universeUri)
             .setUseCase(commandName)
@@ -72,7 +71,6 @@ class UuUniverseClient {
             throw e;
         }
         return result.data;
-
     }
 }
 
