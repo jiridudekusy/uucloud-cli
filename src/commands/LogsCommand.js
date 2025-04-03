@@ -101,6 +101,11 @@ const optionsDefinitions = [{
     name: "timeWindowType",
     type: String,
     description: "Format od result. Supported values : \"timeStamp\"(default), \"time\", \"eventTime\""
+}, {
+    name: "color",
+    type: String,
+    description: "Control color output: \"auto\" (default, colorize output when stdout is a terminal), \"always\" (always use colors, even when piped), or \"never\" (never use colors).",
+    defaultValue: "auto"
 }, ...commonOptionsDefinitionsWithPresentAndApps];
 
 const help = [{
@@ -225,6 +230,9 @@ In case that you want get logs via asid just put it into command line on place w
     }, {
         example: escapeChalk(String.raw`uucloud logs -f ues:ABC:DEF:GHI --filter "logLevel == \"ERROR\""`),
         description: "Print all ERRORS."
+    }, {
+        example: escapeChalk(String.raw`uucloud logs -f --color=always ues:ABC:DEF:GHI | tee application-logs.txt`),
+        description: "Follow logs and preserve colors even when piping to another command like tee."
     }]
 }, {
     header: "How does apps selection work ?", content: `Apps selection works using 4 mechanisms. You can combine all of them together.
@@ -288,6 +296,17 @@ class LogsCommand extends Command {
             
             let present = this._taskUtils.loadPresent(options);
             options = this._taskUtils.mergeWithConfig(options, present);
+            
+            // Determine color mode based on options
+            const shouldForceColor = options.color === "always";
+            const shouldNeverColor = options.color === "never";
+            
+            // Set color level based on options
+            if (shouldForceColor) {
+                chalk.level = 2; // Force color level to 2 (full 256 colors)
+            } else if (shouldNeverColor) {
+                chalk.level = 0; // Disable colors completely
+            }
             
             let filterFn = () => true;
             if (options.filter) {
@@ -451,8 +470,11 @@ class LogsCommand extends Command {
         const uuLogStore = this._serviceFactory('LogStore', config);
         const appDeploymentUris = apps.map(app => app.appDeploymentUri);
         
-        //tail logs cannot be with --output
-        const appsFormat = this._prepareApplicationFormat(apps, true);
+        // Determine color mode based on options
+        const useColors = options.color === "always" || 
+                          (options.color === "auto" && process.stdout.isTTY);
+        
+        const appsFormat = this._prepareApplicationFormat(apps, useColors);
         
         await uuLogStore.tailLogs(appDeploymentUris, criteria, (logs) => 
             this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format)
@@ -481,7 +503,16 @@ class LogsCommand extends Command {
         }
         
         const uuLogStore = this._serviceFactory('LogStore', config);
-        const appsFormat = this._prepareApplicationFormat(apps, !options.output);
+        
+        // Determine color mode based on options
+        // For output to file, don't use colors unless explicitly requested with color=always
+        // For console output, use colors if output is to a TTY with color=auto or if color=always
+        const useColors = options.output ? 
+                          options.color === "always" : 
+                          (options.color === "always" || 
+                           (options.color === "auto" && process.stdout.isTTY));
+        
+        const appsFormat = this._prepareApplicationFormat(apps, useColors);
         
         if (options.output) {
             await mkdirp(options.output);
