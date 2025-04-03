@@ -32,7 +32,8 @@ const sections = [
       { name: 'use', summary: 'Sets up default parameter values.' },
       { name: 'ps', summary: 'Displays list of deployed uuApps.' },
       { name: 'logs', summary: 'Fetch the logs of one or more uuApps' },
-      { name: 'i', summary: 'Interactive mode for selecting and operating on deployed uuApps' }
+      { name: 'i', summary: 'Interactive mode for selecting and operating on deployed uuApps' },
+      { name: 'execute', summary: 'Execute a command with a specified command path and dtoIn.' }
     ]
   }
 ];
@@ -88,6 +89,8 @@ async function execute() {
     CommandClass = require('./commands/UseCommand'); 
   } else if(mainOptions.command === "i"){
     CommandClass = require('./commands/InteractiveCommand');
+  } else if(mainOptions.command === "execute"){
+    CommandClass = require('./commands/ExecuteCommand');
   }
 
   if (!CommandClass) {
