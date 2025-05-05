@@ -1,7 +1,7 @@
 {
   "name": "uucloud-cli",
   "license": "MIT",
-  "version": "1.0.0-beta.3",
+  "version": "1.0.0-beta.4",
   "repository": {
     "type": "git",
     "url": "https://github.com/jiridudekusy/uucloud-cli.git"
@@ -16,9 +16,11 @@
   },
   "main": "index.js",
   "dependencies": {
+    "@inquirer/prompts": "^7.3.2",
     "await-sleep": "^0.0.1",
     "chalk": "^2.4.2",
     "cli-table2": "^0.2.0",
+    "colors": "1.4.0",
     "command-line-args": "^5.0.2",
     "command-line-usage": "^5.0.5",
     "configstore": "^4.0.0",
@@ -32,16 +34,14 @@
     "open": "^10.1.0",
     "properties-reader": "^2.2.0",
     "read": "^1.0.7",
+    "read-last-lines": "^1.8.0",
+    "string-argv": "^0.3.1",
     "update-notifier": "^4.1.0",
     "uu_appg01_core-appclient": "^6.0.0",
     "uu_appg01_core-logging": "^6.0.0",
     "uu_appg01_core-npm": "^4.3.0",
     "uu_appg01_core-utils": "^6.0.0",
-    "uu_appg01_devkit-common": "^4.2.1",
-    "colors": "1.4.0",
-    "string-argv": "^0.3.1",
-    "read-last-lines": "^1.8.0",
-    "@inquirer/prompts": "^7.3.2"
+    "uu_appg01_devkit-common": "^4.2.1"
   },
   "devDependencies": {
     "jest": "^23.6.0",
