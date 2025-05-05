@@ -1,4 +1,3 @@
-const UuCloudDeployListTask = require("uu_appg01_core-npm/src/scripts/uu_cloud/task-deploy-list");
 const CmdHelper = require("uu_appg01_core-npm/src/scripts/uu_cloud/misc/cmd-helper.js");
 const AppClient = require("uu_appg01_core-npm/src/scripts/uu_cloud/misc/app-client.js");
 const { LoggerFactory } = require("uu_appg01_core-logging");
