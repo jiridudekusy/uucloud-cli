@@ -91,6 +91,10 @@ Example of usage from config.json:
    
 # Release Notes
 
+0.18.1
+------
+- upgrade to appclient 6.x
+
 0.18.0
 ------
 - add full support for uuCloudg02 in `ps` and `logs` commands. 
