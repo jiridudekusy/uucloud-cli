@@ -91,6 +91,10 @@ Example of usage from config.json:
    
 # Release Notes
 
+1.0.0-beta.5
+------------
+- add `--version` and `--releaseNotes` commands
+
 1.0.0-beta.4
 ------------
 - upgrade to appserver 6.x
