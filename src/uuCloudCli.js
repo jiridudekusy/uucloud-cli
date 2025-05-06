@@ -6,6 +6,8 @@ const pkg = require('../package.json');
 const Config = require("./misc/config");
 const { parseArgsStringToArgv } = require('string-argv');
 const container = require('./di/container-setup');
+const fs = require('fs');
+const path = require('path');
 
 const keypress = async () => {
   process.stdin.setRawMode(true)
@@ -15,6 +17,22 @@ const keypress = async () => {
     resolve()
   }))
 }
+
+// Function to read release notes from README.md
+const getReleaseNotes = () => {
+  try {
+    const readmePath = path.join(__dirname, '..', 'README.md');
+    const readme = fs.readFileSync(readmePath, 'utf8');
+    
+    // Extract the release notes section
+    const releaseNotesSection = readme.split('# Release Notes')[1];
+    if (!releaseNotesSection) return 'Release notes not found';
+    
+    return releaseNotesSection.trim();
+  } catch (error) {
+    return `Error reading release notes: ${error.message}`;
+  }
+};
 
 const sections = [
   {
@@ -35,6 +53,21 @@ const sections = [
       { name: 'i', summary: 'Interactive mode for selecting and operating on deployed uuApps' },
       { name: 'execute', summary: 'Execute a command with a specified command path and dtoIn.' }
     ]
+  },
+  {
+    header: 'Global Options',
+    optionList: [
+      {
+        name: 'version',
+        description: 'Display CLI version information.',
+        type: Boolean
+      },
+      {
+        name: 'releaseNotes',
+        description: 'Display release notes from README.md',
+        type: Boolean
+      }
+    ]
   }
 ];
 
@@ -49,10 +82,25 @@ async function execute() {
   }
 
   const mainDefinitions = [
-    {name: 'command', defaultOption: true}
+    {name: 'command', defaultOption: true},
+    {name: 'version', type: Boolean, description: 'Display CLI version information.'},
+    {name: 'releaseNotes', type: Boolean, description: 'Display release notes from README.md'}
   ];
 
   let mainOptions = commandLineArgs(mainDefinitions, {stopAtFirstUnknown: true});
+  
+  // Check if version flag is provided
+  if (mainOptions.version) {
+    console.log(pkg.version);
+    return;
+  }
+  
+  // Check if releaseNotes flag is provided
+  if (mainOptions.releaseNotes) {
+    console.log(getReleaseNotes());
+    return;
+  }
+  
   let CommandClass;
   let argv = mainOptions._unknown || [];
   let shortcuts = Config.all.shortcuts || [];
