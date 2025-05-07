@@ -110,6 +110,8 @@ function verifyCommonOptionsDefinitionsAuthentication(options, taskUtils) {
     // Handle insecure flag by setting NODE_TLS_REJECT_UNAUTHORIZED env variable
     if (options.insecure) {
         process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+        // Also set uu_app_client_verify_ssl to false
+        Config.set("uu_app_client_verify_ssl", false);
         console.error("Warning: Using --insecure flag. SSL certificate validation is disabled.");
     }
     

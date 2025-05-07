@@ -74,8 +74,23 @@ const sections = [
 async function execute() {
   const console = container.get('console');
   
-  let notifier = updateNotifier({pkg});
-  if(notifier.update && process.stdout.isTTY && notifier.update.current != notifier.update.latest){
+  // Determine the appropriate distTag for update checking
+  const currentVersion = pkg.version;
+  // A simple check to see if the version string indicates a pre-release (e.g., "1.2.3-beta.0")
+  // For more complex semver handling, a dedicated library like 'semver' could be used.
+  const isBeta = currentVersion.includes('beta');
+  // Use 'beta' for beta pre-releases.
+  // Otherwise, use the default 'latest' for stable releases.
+  const distTagToUse = isBeta ? 'beta' : 'latest';
+
+  let notifier = updateNotifier({
+    pkg,
+    distTag: distTagToUse
+  });
+
+  // Notify the user if an update is available, the process is running in an interactive terminal,
+  // and the current version is different from the latest version.
+  if(notifier.update && process.stdout.isTTY && notifier.update.current !== notifier.update.latest){
     notifier.notify({isGlobal: true, defer: false});
     console.error("Press any key to continue...");
     await keypress();
@@ -155,7 +170,7 @@ async function execute() {
   } catch (error) {
     console.error(`Error executing command: ${error.message}`);
     if (process.env.DEBUG) {
-      console.error(error.stack);
+      console.error(error);
     }
   }
 }

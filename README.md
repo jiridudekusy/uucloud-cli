@@ -91,6 +91,11 @@ Example of usage from config.json:
    
 # Release Notes
 
+1.0.0-beta.9
+------------
+- fix behavior of `--insecure` to sef config parameter `uu_app_client_verify_ssl`
+
+
 1.0.0-beta.5
 ------------
 - add `--version` and `--releaseNotes` commands
