@@ -196,8 +196,8 @@ class BaseActionHandler {
     logger.info(`OIDC URI of uuSubApp : ${oidcUri}`);
     let oidcToken = await new OidcTokenProvider().getToken({
       authentication: "oidc",
-      "oidc-uri": oidcUri,
-      "token-alias": Uri.parse(oidcUri).awid
+      oidcUri,
+      tokenAlias: Uri.parse(oidcUri).awid
     });
     return oidcToken;
   }
@@ -226,10 +226,10 @@ class BaseActionHandler {
     if (resourcePool) {
       logsOptions.resourcePool = resourcePool;
     }
-    if (!options["log-store-uri"]) {
+    if (!options.logStoreUri) {
       let logstoreUri = await this.discoverLogStore(subAppDeployment, deployList);
       logger.info(`Discovered logstore: ${logstoreUri}`);
-      logsOptions["log-store-uri"] = logstoreUri;
+      logsOptions.logStoreUri = logstoreUri;
     }
     
     // Use the container to get an instance of LogsCommand with all dependencies

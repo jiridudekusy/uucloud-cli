@@ -4,10 +4,10 @@ const UuCloud = require("./uucloud");
 class UucloudClient {
     constructor(oidcToken, options = {}) {
         this.config = options || {};
-        if (this.config["universe-uri"]) {
-            this.provider = new UuUniverseClient({oidcToken, universeUri: options["universe-uri"]});
+        if (this.config.universeUri) {
+            this.provider = new UuUniverseClient({oidcToken, universeUri: options.universeUri});
         } else {
-            this.provider = new UuCloud({oidcToken, c3Uri: options["c3-uri"] || ""});
+            this.provider = new UuCloud({oidcToken, c3Uri: options.c3Uri || ""});
         }
     }
 
@@ -16,7 +16,7 @@ class UucloudClient {
     }
 
     async getUniverseClient() {
-        if (this.config["universe-uri"]) {
+        if (this.config.universeUri) {
             return this.provider;
         } else {
             return null;

@@ -40,11 +40,11 @@ Example of usage from config.json:
   "...": "any aother configuration",
   "presents": {
     "libra-int-west": {
-      "resourcePool": "ues:DEV0149-BT[84753967820114986]:AWE_USYE.LIBRAM[5cdacf12b338bf708e1b7645]"
+      "resource-pool": "ues:DEV0149-BT[84753967820114986]:AWE_USYE.LIBRAM[5cdacf12b338bf708e1b7645]"
     },
     "cams-dev": {
-      "resourcePool": "ues:UNI-BT:DEV",
-      "authenticationType": "basic",
+      "resource-pool": "ues:UNI-BT:DEV",
+      "authentication-type": "basic",
       "authentication": "vault",
       "user": "camsDevCloudAdmin",
       "c3-uri": "http://mongoa.cams:8080",
@@ -87,18 +87,35 @@ Example of usage from config.json:
 
 ```
 
-//TODO JDK
-   
+# Command Line Option Format
+
+The CLI supports two formats for command line options:
+
+1. Kebab-case format (preferred): Use hyphens between words, e.g., `--resource-pool`, `--command-path`, `--log-store-uri`, `--time-window-type`
+2. CamelCase format (for backward compatibility): Words concatenated with capitalization, e.g., `--resourcePool`, `--commandPath`, `--logStoreUri`, `--timeWindowType`
+
+Both formats are accepted on the command line, so these commands are equivalent:
+```
+uucloud logs --time-window-type timeStamp
+uucloud logs --timeWindowType timeStamp
+```
+
+The kebab-case format is the preferred standard and is used in all documentation and examples. Internally, the CLI converts all option names to camelCase when processing them.
+
 # Release Notes
+
+1.0.0-beta.11
+-------------
+- add support for kebab-case command line options (e.g., `--resource-pool` in addition to `--resourcePool`)
+- standardize documentation to use kebab-case option format
 
 1.0.0-beta.9
 ------------
 - fix behavior of `--insecure` to sef config parameter `uu_app_client_verify_ssl`
 
-
 1.0.0-beta.5
 ------------
-- add `--version` and `--releaseNotes` commands
+- add `--version` and `--release-notes` (or `--releaseNotes`) commands
 
 1.0.0-beta.4
 ------------
@@ -112,7 +129,6 @@ Example of usage from config.json:
 1.0.0-beta.1
 ------------
 - add intreactive mode
-
 
 0.18.0
 ------
@@ -155,11 +171,9 @@ Example of usage from config.json:
 ------
 - add support for shortcuts
 
-
 0.12.2
 ------
 - bugfix: ensure that colors in version 1.4.0 is used (https://www.bleepingcomputer.com/news/security/dev-corrupts-npm-libs-colors-and-faker-breaking-thousands-of-apps/)
-
 
 0.12.1
 ------
@@ -172,8 +186,6 @@ Example of usage from config.json:
     - add `criteria` option to support server side filtering
     - add `timeWindowType` option to support paging by different time attribute(`tmestamp` is default)
 - all non-results texts (such as promp messages or information messages) are now printed to stderr instead of stdout. Only result is printed to stdout and it allows to forexample pipe result of logs command with `jsonstream` codec directly to `jq` tool
-
-
 
 0.11.0
 ------
@@ -193,7 +205,6 @@ Example of usage from config.json:
 -----
 - add support for filtering of apps on `ps` task when using `raw` codec
 
-
 0.8.0
 -----
 - add support for filtering of apps on `ps` task
@@ -204,7 +215,6 @@ Example of usage from config.json:
     - display correctly count (including spp)
     - add allocated cpu and memory
     - add total 
-
 
 0.7.2
 -----
@@ -217,7 +227,6 @@ Example of usage from config.json:
 0.7.0
 -----
 - add version to **ps** command.
-
 
 0.6.0
 -----

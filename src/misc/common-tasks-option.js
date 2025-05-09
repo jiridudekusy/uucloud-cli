@@ -11,7 +11,7 @@ const commonOptionsDefinitionsAuthentication = [
         description: "Type of user authentication. It supports browser(default, token will be obtained from browser using currectly logged user), vault(obtained from oidc-plus4u-vault), interactive(you will be asked for ac1 and ac2) and passwordFile(file with ac1 and ac2)."
     },
     {
-        name: "authenticationType",
+        name: "authentication-type",
         type: String,
         description: "Type of authentication used for uuC3 and uuLogStore. It supports oidc(default), basic(http basic auth) ."
     },
@@ -50,7 +50,7 @@ const commonOptionsDefinitionsAuthentication = [
         description: "Extra CA certificates to verify peer against"
     },
     {
-        name: "passwordFile",
+        name: "password-file",
         type: String,
         description: "File containing ac1 and ac2. (2 lines: accessCode1=... and accessCode2=...)"
     }
@@ -58,7 +58,7 @@ const commonOptionsDefinitionsAuthentication = [
 
 const commonOptionsDefinitionsWithResourcePool = [
     {
-        name: "resourcePool",
+        name: "resource-pool",
         alias: "r",
         type: String,
         multiple: true,
@@ -145,7 +145,7 @@ function verifyCommonOptionsDefinitionsWithResourcePool(options, taskUtils) {
         if (!Array.isArray(options.resourcePool)) {
             options.resourcePool = [options.resourcePool];
         }
-        if(options["universe-uri"]){
+        if(options.universeUri){
 
         }else {
             options.resourcePool.forEach(r => taskUtils.testOption(UESUri.parse(r), "Resource pool uri must be valid UES uri."));

@@ -80,10 +80,10 @@ class OidcTokenProvider {
         let oidcToken;
         if (type === "oidc") {
             let oidcOptions = {};
-            if (options["oidc-uri"]) {
-                oidcOptions["uu_oidc_server_uri"] = options["oidc-uri"];
+            if (options.oidcUri) {
+                oidcOptions["uu_oidc_server_uri"] = options.oidcUri;
             }
-            let tokenAlias = options["token-alias"];
+            let tokenAlias = options.tokenAlias;
             if (!tokenAlias) {
                 tokenAlias = "defaultToken";
             }
