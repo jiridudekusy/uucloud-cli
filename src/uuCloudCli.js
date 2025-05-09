@@ -63,8 +63,8 @@ const sections = [
         type: Boolean
       },
       {
-        name: 'releaseNotes',
-        description: 'Display release notes from README.md',
+        name: 'release-notes',
+        description: 'Display release notes from README.md (--releaseNotes is also supported).',
         type: Boolean
       }
     ]
@@ -99,10 +99,17 @@ async function execute() {
   const mainDefinitions = [
     {name: 'command', defaultOption: true},
     {name: 'version', type: Boolean, description: 'Display CLI version information.'},
-    {name: 'releaseNotes', type: Boolean, description: 'Display release notes from README.md'}
+    {name: 'release-notes', type: Boolean, description: 'Display release notes from README.md'}
   ];
 
-  let mainOptions = commandLineArgs(mainDefinitions, {stopAtFirstUnknown: true});
+  // Convert any camelCase arguments to kebab-case for consistent parsing
+  const TaskUtils = require('./misc/task-utils');
+  const normalizedArgs = TaskUtils.normalizeArguments(process.argv.slice(2));
+
+  let mainOptions = commandLineArgs(mainDefinitions, {
+    argv: normalizedArgs,
+    stopAtFirstUnknown: true
+  });
   
   // Check if version flag is provided
   if (mainOptions.version) {
@@ -110,8 +117,8 @@ async function execute() {
     return;
   }
   
-  // Check if releaseNotes flag is provided
-  if (mainOptions.releaseNotes) {
+  // Check if release-notes flag is provided
+  if (mainOptions['release-notes']) {
     console.log(getReleaseNotes());
     return;
   }
@@ -168,10 +175,7 @@ async function execute() {
     const command = container.createCommand(CommandClass);
     await command.execute(argv);
   } catch (error) {
-    console.error(`Error executing command: ${error.message}`);
-    if (process.env.DEBUG) {
-      console.error(error);
-    }
+    console.error(`Error executing command: ${error}`);
   }
 }
 

@@ -100,7 +100,7 @@ class ExecuteCommand extends Command {
       verifyCommonOptionsDefinitionsWithPresent(options, this._taskUtils);
       
       // Check if required parameters are provided
-      if (!options["command-path"]) {
+      if (!options.commandPath) {
         throw new Error("Command path is required. Use -c or --command-path to specify the command path.");
       }
       
@@ -208,7 +208,7 @@ class ExecuteCommand extends Command {
       }
       
       // Execute the command
-      logger.info(`Executing command: ${options["command-path"]}`);
+      logger.info(`Executing command: ${options.commandPath}`);
       logger.info(`Application: ${subAppDeployment.code} (${selectedSubapp})`);
       logger.info(`With AWID: ${selectedAwid.awid}`);
       logger.info(`dtoIn: ${JSON.stringify(dtoIn, null, 2)}`);
@@ -222,13 +222,13 @@ class ExecuteCommand extends Command {
       logger.info(`OIDC URI of uuSubApp: ${oidcUri}`);
       const oidcToken = await new OidcTokenProvider().getToken({
         authentication: "oidc",
-        "oidc-uri": oidcUri,
-        "token-alias": Uri.parse(oidcUri).awid
+        oidcUri: oidcUri,
+        tokenAlias: Uri.parse(oidcUri).awid
       });
       
       // Build the command URI using Uri builder
       const uriBuilder = Uri.createBuilder().parse(selectedAwid.awidUri);
-      uriBuilder.setUseCase(options["command-path"]);
+      uriBuilder.setUseCase(options.commandPath);
       const commandUri = uriBuilder.toUri().toString();
       
       // Set headers with the application-specific token

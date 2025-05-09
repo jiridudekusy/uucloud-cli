@@ -98,7 +98,7 @@ const optionsDefinitions = [{
     multiple: true,
     description: "Select log reccords based on criteria (server side). Format should be \"[key]:[value]\". Multiple criteria can be specificed."
 }, {
-    name: "timeWindowType",
+    name: "time-window-type",
     type: String,
     description: "Format od result. Supported values : \"timeStamp\"(default), \"time\", \"eventTime\""
 }, {
@@ -331,7 +331,7 @@ class LogsCommand extends Command {
     
             let apps;
             if (options.apps) {
-                if (options["disable-resolving"]) {
+                if (options.disableResolving) {
                     apps = this._getAppsFromParams(options.apps);
                 } else {
                     apps = await this._getAppsFromAppDeploymentList(options.apps, options.resourcePool, options, present);
@@ -463,8 +463,8 @@ class LogsCommand extends Command {
         let config = {
             oidcToken: token
         };
-        if (options["log-store-uri"]) {
-            config.logStoreUri = options["log-store-uri"];
+        if (options.logStoreUri) {
+            config.logStoreUri = options.logStoreUri;
         }
         
         const uuLogStore = this._serviceFactory('LogStore', config);
@@ -498,8 +498,8 @@ class LogsCommand extends Command {
         let config = {
             oidcToken: token
         };
-        if (options["log-store-uri"]) {
-            config.logStoreUri = options["log-store-uri"];
+        if (options.logStoreUri) {
+            config.logStoreUri = options.logStoreUri;
         }
         
         const uuLogStore = this._serviceFactory('LogStore', config);
