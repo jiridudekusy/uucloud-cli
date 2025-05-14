@@ -104,6 +104,10 @@ The kebab-case format is the preferred standard and is used in all documentation
 
 # Release Notes
 
+1.0.0-beta.13
+-------------
+- Bugfix: do not fail when application code is null (some invalid state in universe) 
+
 1.0.0-beta.12
 -------------
 - Bugfix: do not fail when shortcut command is using chalk templates eg. `{{code}}`

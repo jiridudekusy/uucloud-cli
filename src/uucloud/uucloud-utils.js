@@ -11,10 +11,10 @@ function filterAppDeployments(deployList, appsIdentifiers) {
             return true;
         }
 
-        let appTags = app.tags;
+        let appTags = app.tags || [];
         let matchedIdentifiers = appsIdentifiers.map(id => id.split(",")).filter(tags => {
             for (let tag of tags) {
-                if (!appTags.includes(tag)&&!app.code.includes(tag)) {
+                if (!appTags.includes(tag)&&!app.code?.includes(tag)) {
                     return false;
                 }
             }

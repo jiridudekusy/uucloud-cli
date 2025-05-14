@@ -181,6 +181,7 @@ async function execute() {
     await command.execute(argv);
   } catch (error) {
     console.error(`Error executing command: ${error}`);
+    console.error(error.stack);
   }
 }
 
