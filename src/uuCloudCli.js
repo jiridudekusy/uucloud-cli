@@ -9,6 +9,11 @@ const container = require('./di/container-setup');
 const fs = require('fs');
 const path = require('path');
 
+// Function to escape Handlebars templates and other special characters in text
+function escapeSpecialChars(text) {
+  return text.replace(/([\\{}"])/g, "\\$1");
+}
+
 const keypress = async () => {
   process.stdin.setRawMode(true)
   return new Promise(resolve => process.stdin.once('data', () => {
@@ -130,7 +135,7 @@ async function execute() {
   if(shortcuts.length > 0) {
     sections.push({
       header: 'Shortcuts',
-      content: shortcuts.map(s => {return {name: s.shortcut, summary: s.command}})
+      content: shortcuts.map(s => {return {name: s.shortcut, summary: escapeSpecialChars(s.command)}})
     });
   }
   
