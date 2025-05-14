@@ -104,6 +104,10 @@ The kebab-case format is the preferred standard and is used in all documentation
 
 # Release Notes
 
+1.0.0-beta.12
+-------------
+- Bugfix: do not fail when shortcut command is using chalk templates eg. `{{code}}`
+
 1.0.0-beta.11
 -------------
 - add support for kebab-case command line options (e.g., `--resource-pool` in addition to `--resourcePool`)
