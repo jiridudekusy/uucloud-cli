@@ -104,6 +104,21 @@ The kebab-case format is the preferred standard and is used in all documentation
 
 # Release Notes
 
+x.x.x
+-------------
+- add gantt codec
+  - it is activated by `--codec=gantt`
+  - it is only possible to list logs for single subapp with gantt view
+  - it is not possible to use `--follow` option with gantt codec
+  - it must be used together with `logs -c recordType:ACCESS_LOG` option
+  - to get perfmon records, it is necessary to
+    - have configured uri to uuAppLogStore in subapp configuration
+    - have enabled shipping of audit logs from subapp to uuApplogstore
+    - have configured indexes and filtering based on `logTypeCode` and `requestId` - see https://uuapp.plus4u.net/uu-bookkit-maing01/926da88d2adb4449b69d3a57b81f189e/book/page?code=32134022
+  - it is possible to use it with combination of filtering:
+    - examples: `--filter "not ( urlPath ~= \"sys/getHealth\")"` to filter out sys/getHealth
+  - example: `uuclou logs -c recordType:ACCESS_LOG -p smarta-dev1 uu-griffin-entity --since "2025-05-28T09:00:00.108Z" --until "2025-05-28T09:04:59.108Z" --filter "not ( urlPath ~= \"sys/getHealth\")" --codec=gantt`
+
 1.0.0-beta.13
 -------------
 - Bugfix: do not fail when application code is null (some invalid state in universe) 
