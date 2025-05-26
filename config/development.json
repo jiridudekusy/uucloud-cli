@@ -1,2 +1,40 @@
 {
+  "authentication": "browser",
+  "user": "you",
+  "shortcuts": [
+    {
+      "shortcut": "p",
+      "command": "ps"
+    },
+    {
+      "shortcut": "accessLogs",
+      "command": "logs -c recordType:ACCESS_LOG --format \"{{subAppCode log.appDeploymentUri}} {{date log.eventTime 'YYYY-MM-DD HH:mm:ss,SSS'}} {{log.message}} {{log.responseTime}}\""
+    }
+  ],
+  "presents": {
+    "smarta-dev1": {
+      "log-store-uri": "https://smarta-dev1.pseex20-smarta.local/uu-cloudlogstore-maing02/00219130310000000000000022645092",
+      "oidc-uri": "https://ume.pseex20-smarta.local/uu-oidc-maing02/00219010010000000000000000000100/oidc",
+      "universe-uri": "https://ume.pseex20-smarta.local/uu-cloud-universeg01/00219030110000000000000000000100",
+      "resourcePool": "65f97a5b3a27f90018d00299"
+    },
+    "smarta-dev2": {
+      "log-store-uri": "https://smarta-dev2.pseex20-smarta.local/uu-cloudlogstore-maing02/00219230310000000000000075307592",
+      "oidc-uri": "https://ume.pseex20-smarta.local/uu-oidc-maing02/00219010010000000000000000000100/oidc",
+      "universe-uri": "https://ume.pseex20-smarta.local/uu-cloud-universeg01/00219030110000000000000000000100",
+      "resourcePool": "661ce126a7d215001911bf4b"
+    },
+    "smarta-fat": {
+      "log-store-uri": "https://smarta-fat.pseex20-smarta.local/uu-cloudlogstore-maing02/00217030310000000000000050212032",
+      "oidc-uri": "https://ume.pseex20-smarta.local/uu-oidc-maing02/00219010010000000000000000000100/oidc",
+      "universe-uri": "https://ume.pseex20-smarta.local/uu-cloud-universeg01/00219030110000000000000000000100",
+      "resourcePool": "6634c753a7d2150019123e9a"
+    },
+    "smarta-int": {
+      "log-store-uri": "https://smarta-int.pseex20-smarta.local/uu-cloudlogstore-maing02/00219430310000000000000082946792",
+      "oidc-uri": "https://smarta-ume2.pseex20-smarta.local/uu-oidc-maing02/00219010010000000000000000000100/oidc",
+      "universe-uri": "https://smarta-ume2.pseex20-smarta.local/uu-cloud-universeg01/00219030110000000000000000000100/universe",
+      "resourcePool": "66fa66501bc8670019ba2fff"
+    }
+  }
 }

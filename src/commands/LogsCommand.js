@@ -14,9 +14,12 @@ const fs = require("fs");
 const {compileExpression} = require("filtrex");
 const readLastLines = require('read-last-lines');
 const Handlebars = require("handlebars");
+const dayjs = require("dayjs");
+const {string} = require("handlebars-helpers/lib");
 const helpers = require("handlebars-helpers")({
     handlebars: Handlebars
 });
+
 
 Handlebars.registerHelper("subAppCode", (appDeploymentUri, options) => {
     if (options.data.root._appsFormat[appDeploymentUri]) {
@@ -667,7 +670,18 @@ class LogsCommand extends Command {
      * @private
      */
     _printLogs(logs, apps, codec, format) {
-        logs.length > 0 && this._console.log(logs.map(logRecord => this._formatLogRecord(logRecord, apps, codec, format)).join("\n").trim());
+
+        //find out proper chartWidth
+        const width = process.stdout.columns - 40;
+        console.log(`Console width: ${width} characters`);
+
+        //render gant
+        const Gantt = require("../misc/gantt");
+        const gantt= new Gantt();
+        gantt.renderGantt(logs, width);
+
+        //original print cmd
+        //logs.length > 0 && this._console.log(logs.map(logRecord => this._formatLogRecord(logRecord, apps, codec, format)).join("\n").trim());
     }
 }
 
@@ -675,4 +689,4 @@ class LogsCommand extends Command {
 LogsCommand.optionsDefinitions = optionsDefinitions;
 LogsCommand.help = help;
 
-module.exports = LogsCommand; 
+module.exports = LogsCommand;
