@@ -7,6 +7,7 @@ const ConsoleClient = require("../platform/console-client");
 const AppServerAuditClient = require("../platform/appserver-audit-client");
 const { searchPrompt } = require("../misc/prompt-utils");
 const container = require("../di/container-setup");
+const {getAppConfig} = require("../misc/config-utils");
 
 class BaseActionHandler {
   constructor(opts) {
@@ -188,11 +189,11 @@ class BaseActionHandler {
   }
 
   getAppStatusConsoleUri(subAppDeployment) {
-    return this.getAppConfig(subAppDeployment, "uu_app_status_progress_base_uri", "uuAppStatus.progressBaseUri");
+    return getAppConfig(subAppDeployment, "uu_app_status_progress_base_uri", "uuAppStatus.progressBaseUri");
   }
 
   async getAppDeploymentOidcToken(subAppDeployment) {
-    let oidcUri = this.getAppConfig(subAppDeployment, "uu_app_oidc_providers_oidcg02_uri", "uu.app.oidc.providers.oidcg02.uri");
+    let oidcUri = getAppConfig(subAppDeployment, "uu_app_oidc_providers_oidcg02_uri", "uu.app.oidc.providers.oidcg02.uri");
     logger.info(`OIDC URI of uuSubApp : ${oidcUri}`);
     let oidcToken = await new OidcTokenProvider().getToken({
       authentication: "oidc",
@@ -200,17 +201,6 @@ class BaseActionHandler {
       tokenAlias: Uri.parse(oidcUri).awid
     });
     return oidcToken;
-  }
-
-  getAppConfig(subAppDeployment, ...keys) {
-    let config = subAppDeployment.uuAppServerEnvironment;
-    let value;
-    for (const key of keys) {
-      if (value === undefined || value === null) {
-        value = config[key];
-      }
-    }
-    return value;
   }
 
   async followLogs(subAppDeployment, context = {}) {

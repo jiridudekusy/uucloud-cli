@@ -33,6 +33,12 @@ class Console {
   warn(message) {
     throw new Error("Method warn not implemented");
   }
+
+  async finish(){
+    throw new Error("Method finish not implemented");
+  }
+
+
 }
 
 module.exports = Console; 

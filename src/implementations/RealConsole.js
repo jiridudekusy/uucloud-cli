@@ -35,6 +35,9 @@ class RealConsole extends Console {
   warn(message) {
     console.warn(message);
   }
+
+  finish() {
+  }
 }
 
 module.exports = RealConsole; 

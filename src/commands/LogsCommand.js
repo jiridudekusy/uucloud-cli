@@ -17,6 +17,7 @@ const Handlebars = require("handlebars");
 const helpers = require("handlebars-helpers")({
     handlebars: Handlebars
 });
+const {getAppConfig} = require("../misc/config-utils");
 
 Handlebars.registerHelper("subAppCode", (appDeploymentUri, options) => {
     if (options.data.root._appsFormat[appDeploymentUri]) {
@@ -87,7 +88,7 @@ const optionsDefinitions = [{
 }, {
     name: "codec",
     type: String,
-    description: "Format od result. Supported values : \"formatted\"(default), \"json\" or \"jsonstream\"(Line-delimited JSON)",
+    description: "Format od result. Supported values : \"formatted\"(default), \"json\", \"jsonstream\"(Line-delimited JSON) or \"gantt\" ",
     defaultValue: "formatted"
 }, {
     name: "filter", type: String, description: "Filter log records (on client side after records are downloaded)."
@@ -274,6 +275,7 @@ class LogsCommand extends Command {
         this._serviceFactory = dependencies.serviceFactory;
         this._console = dependencies.console;
         this._taskUtils = dependencies.taskUtils;
+        this._logs = [];
     }
     
     /**
@@ -328,13 +330,14 @@ class LogsCommand extends Command {
                     criteria[parts[0]] = parts[1];
                 });
             }
-    
+
             let apps;
+            let fullApps;
             if (options.apps) {
                 if (options.disableResolving) {
                     apps = this._getAppsFromParams(options.apps);
                 } else {
-                    apps = await this._getAppsFromAppDeploymentList(options.apps, options.resourcePool, options, present);
+                    ({apps:apps, filteredApps:fullApps} = await this._getAppsFromAppDeploymentList(options.apps, options.resourcePool, options, present));
                 }
             } else {
                 this._taskUtils.printOtionsErrorAndExit("At least one app must be specified.");
@@ -370,7 +373,20 @@ class LogsCommand extends Command {
                 if (!options.output) {
                     this._taskUtils.testOption(apps.length === 1, "You can follow logs up to 10 applications, but you can list history logs only for 1.");
                 }
-                await this._getLog(apps, from, to, filterFn, criteria, options);
+
+                if (options.codec === "gantt") {
+                    this._taskUtils.testOption(options.criteria && options.criteria.includes("recordType:ACCESS_LOG"), "Can not use gantt without access log criteria. use -c recordType:ACCESS_LOG");
+                    let appLogStoreUri = this.getAppLogStoreUri(fullApps[0]);
+                    let oidcUri = this.getOidcUri(fullApps[0]);
+                    const GantConsole = require("../implementations/GanttConsole");
+                    this._console = new GantConsole(appLogStoreUri, oidcUri);
+                    await this._getLog(apps, from, to, filterFn, criteria, options);
+                    await this._console.finish();
+                } else {
+                    await this._getLog(apps, from, to, filterFn, criteria, options);
+                }
+
+
             }
         } catch (error) {
             this._console.error(`Error: ${error.message}`);
@@ -384,7 +400,7 @@ class LogsCommand extends Command {
      * @param {string} resourcePoolUri - Resource pool URI
      * @param {Object} options - Command options
      * @param {Object} present - Present configuration
-     * @returns {Promise<Array>} - List of applications
+     * @returns {Promise<{filteredApps, apps: *}>} - List of applications
      * @private
      */
     async _getAppsFromAppDeploymentList(appsIdentifiers, resourcePoolUri, options, present) {
@@ -406,8 +422,16 @@ class LogsCommand extends Command {
                 asid: app.asid
             };
         });
-        
-        return apps;
+
+        return {apps, filteredApps};
+    }
+
+    getAppLogStoreUri(subAppDeployment) {
+        return getAppConfig(subAppDeployment, "uu_app_auditlog_app_logstore_uri", "uuAppAuditLog.appLogStoreUri");
+    }
+
+    getOidcUri(subAppDeployment) {
+        return getAppConfig(subAppDeployment, "uu_app_oidc_providers_oidcg02_uri", "uu.app.oidc.providers.oidcg02.uri");
     }
 
     /**
@@ -477,7 +501,7 @@ class LogsCommand extends Command {
         const appsFormat = this._prepareApplicationFormat(apps, useColors);
         
         await uuLogStore.tailLogs(appDeploymentUris, criteria, (logs) => 
-            this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format)
+             this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format)
         );
     }
 
@@ -667,7 +691,11 @@ class LogsCommand extends Command {
      * @private
      */
     _printLogs(logs, apps, codec, format) {
-        logs.length > 0 && this._console.log(logs.map(logRecord => this._formatLogRecord(logRecord, apps, codec, format)).join("\n").trim());
+        if (codec === "gantt") {
+            this._console.log(logs);
+        } else {
+            logs.length > 0 && this._console.log(logs.map(logRecord => this._formatLogRecord(logRecord, apps, codec, format)).join("\n").trim());
+        }
     }
 }
 
@@ -675,4 +703,4 @@ class LogsCommand extends Command {
 LogsCommand.optionsDefinitions = optionsDefinitions;
 LogsCommand.help = help;
 
-module.exports = LogsCommand; 
+module.exports = LogsCommand;
