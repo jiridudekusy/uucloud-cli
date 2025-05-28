@@ -21,7 +21,6 @@ const helpers = require("handlebars-helpers")({
     handlebars: Handlebars
 });
 
-
 Handlebars.registerHelper("subAppCode", (appDeploymentUri, options) => {
     if (options.data.root._appsFormat[appDeploymentUri]) {
         return options.data.root._appsFormat[appDeploymentUri].fomattedCode;
@@ -278,6 +277,7 @@ class LogsCommand extends Command {
         this._serviceFactory = dependencies.serviceFactory;
         this._console = dependencies.console;
         this._taskUtils = dependencies.taskUtils;
+        this._logs = [];
     }
     
     /**
@@ -374,7 +374,18 @@ class LogsCommand extends Command {
                 if (!options.output) {
                     this._taskUtils.testOption(apps.length === 1, "You can follow logs up to 10 applications, but you can list history logs only for 1.");
                 }
-                await this._getLog(apps, from, to, filterFn, criteria, options);
+
+
+                if (options.codec === "gantt") {
+                    const GantConsole = require("../implementations/GanttConsole");
+                    this._console = new GantConsole();
+                    await this._getLog(apps, from, to, filterFn, criteria, options);
+                    await this._console.finish();
+                } else {
+                    await this._getLog(apps, from, to, filterFn, criteria, options);
+                }
+
+
             }
         } catch (error) {
             this._console.error(`Error: ${error.message}`);
@@ -671,22 +682,11 @@ class LogsCommand extends Command {
      * @private
      */
     _printLogs(logs, apps, codec, format) {
-
-        //find out proper chartWidth
-        const width = process.stdout.columns - 60;
-        console.log(`Console width: ${width} characters`);
-
-        //render gant
-        const Gantt = require("../misc/gantt");
-        const gantt= new Gantt();
-        gantt.renderGantt(logs, "simple", width);
-
-        //const Tree = require("../misc/tree");
-        //const tree= new Tree();
-        //tree.renderTree(logs);
-
-        //original print cmd
-        //logs.length > 0 && this._console.log(logs.map(logRecord => this._formatLogRecord(logRecord, apps, codec, format)).join("\n").trim());
+        if (codec === "gantt") {
+            this._console.log(logs);
+        } else {
+            logs.length > 0 && this._console.log(logs.map(logRecord => this._formatLogRecord(logRecord, apps, codec, format)).join("\n").trim());
+        }
     }
 }
 
