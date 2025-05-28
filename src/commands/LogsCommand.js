@@ -14,9 +14,6 @@ const fs = require("fs");
 const {compileExpression} = require("filtrex");
 const readLastLines = require('read-last-lines');
 const Handlebars = require("handlebars");
-const dayjs = require("dayjs");
-const {string} = require("handlebars-helpers/lib");
-const Gantt = require("../misc/gantt");
 const helpers = require("handlebars-helpers")({
     handlebars: Handlebars
 });

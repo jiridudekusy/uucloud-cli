@@ -2,10 +2,7 @@ const {Uri} = require("uu_appg01_core-uri");
 const chalk = require("chalk");
 const dayjs = require("dayjs");
 const {searchPrompt} = require("../misc/prompt-utils");
-const PerfmonHelper = require("./perfmon-helper");
-const json = require("../../test/commands/perfmon-cgmesio.json");
 const readline = require('readline');
-const {line} = require("blessed-contrib");
 
 
 class Gantt {
@@ -22,23 +19,23 @@ class Gantt {
 
     /**
      * @typedef {{ name: string, start: string | number, end: string | number }} Task
-     * @param {Task[]} tasks
+     * @param {Task[]} logs
      * @param {number} chartWidth - Number of characters for timeline (e.g. 60)
      */
-    async renderGantt(tasks, mode = Gantt.modes.SIMPLE, chartWidth = 60) {
+    async renderGantt(logs, mode = Gantt.modes.SIMPLE, chartWidth = 60) {
         // Convert to timestamps
-        const parsedTasks = tasks.filter(t => (t.urlPath)).map(t => {
+        const parsedLogs = logs.filter(l => (l.urlPath)).map(l => {
 
-            if (!t.urlPath) {
+            if (!l.urlPath) {
                 console.log(t);
-                throw new Error("non-parseablelog");
+                throw new Error("non-parseable log");
             }
 
-            const useCase = Uri.parse(t.urlPath).getUseCase();
-            const start = new Date(t.timeStamp);
-            const end = new Date(start.getTime() + t.responseTime);
+            const useCase = Uri.parse(l.urlPath).getUseCase();
+            const start = new Date(l.timeStamp);
+            const end = new Date(start.getTime() + l.responseTime);
             return {
-                ...t,
+                ...l,
                 name: useCase,
                 start: dayjs(start).valueOf(),
                 end: dayjs(end).valueOf(),
@@ -46,8 +43,8 @@ class Gantt {
         });
 
         // Find global min/max
-        const minTime = Math.min(...parsedTasks.map(t => t.start));
-        const maxTime = Math.max(...parsedTasks.map(t => t.end));
+        const minTime = Math.min(...parsedLogs.map(l=> l.start));
+        const maxTime = Math.max(...parsedLogs.map(l => l.end));
         const timeRange = maxTime - minTime;
 
         // Build time labels (X axis)
@@ -55,32 +52,32 @@ class Gantt {
         this._printXAxis(timeRange, chartWidth, minTime);
 
         if (mode === Gantt.modes.GROUPED) {
-            const grouped = this._groupLogs(parsedTasks);
+            const grouped = this._groupLogs(parsedLogs);
             for (const [groupKey, docs] of Object.entries(grouped)) {
                 console.log(); // spacing
                 console.log(`traceID group: ${groupKey}`);
-                docs.forEach((task) => {
-                    this._printLine(task, minTime, timeRange, chartWidth);
+                docs.forEach((logs) => {
+                    this._printLine(logs, minTime, timeRange, chartWidth);
                 })
             }
             console.log(); //spacing
         } else if (mode === Gantt.modes.SIMPLE) {
-            // Print each task
-            parsedTasks.forEach(task => {
-                this._printLine(task, minTime, timeRange, chartWidth);
+            // Print each logs
+            parsedLogs.forEach(logs => {
+                this._printLine(logs, minTime, timeRange, chartWidth);
             });
             // spacing
             console.log();
         } else if (mode === Gantt.modes.INTERACTIVE) {
-            // Print each task at first
-            parsedTasks.forEach(task => {
-                this._printLine(task, minTime, timeRange, chartWidth);
+            // Print each logs at first
+            parsedLogs.forEach(logs => {
+                this._printLine(logs, minTime, timeRange, chartWidth);
             });
             //spacing
             console.log();
 
             //prepare lines for selections
-            let lines = this._getInteractiveLines(parsedTasks, minTime, timeRange, chartWidth);
+            let lines = this._getInteractiveLines(parsedLogs, minTime, timeRange, chartWidth);
 
             //selection-based loop
             while (true) {
@@ -89,7 +86,7 @@ class Gantt {
                     console.log(chalk.green('\nGoodbye!\n'));
                     process.exit(0);
                 }
-                let logItem = parsedTasks.filter(tasks => tasks.id === result)[0];
+                let logItem = parsedLogs.filter(logss => logss.id === result)[0];
                 this._renderLogDetail(logItem);
                 await this._waitForEnter();
             }
@@ -101,12 +98,14 @@ class Gantt {
         console.log(chalk.green(JSON.stringify(logItem, null, 2)));
         console.log("Perfmon section:")
         console.log("")
+        //const PerfmonHelper = require("./perfmon-helper");
+        //const json = require("../../test/commands/perfmon-cgmesio.json");
         //let json = require("../../test/commands/perfmon-cgmesio.json");
         //let output = PerfmonHelper.renderTreeString(json);
         //return output;
     }
 
-    _getInteractiveLines(parsedTasks, minTime, timeRange, chartWidth) {
+    _getInteractiveLines(parsedLogs, minTime, timeRange, chartWidth) {
         let lines = [];
         lines.push({
             name: "exit",
@@ -114,13 +113,12 @@ class Gantt {
         })
 
         let realLines =
-            parsedTasks.map(task => {
-                let line = this._getLine(task, minTime, timeRange, chartWidth);
-                let res = {
+            parsedLogs.map(logs => {
+                let line = this._getLine(logs, minTime, timeRange, chartWidth);
+                return {
                     name: line,
-                    value: task.id
-                }
-                return res;
+                    value: logs.id
+                };
             });
 
         lines.push(...realLines);
@@ -176,22 +174,22 @@ class Gantt {
         return axis;
     }
 
-    _getLine(task, minTime, timeRange, chartWidth) {
-        const name = task.name.padEnd(10 + 10);
-        const startPos = Math.floor(((task.start - minTime) / timeRange) * chartWidth);
-        const endPos = Math.floor(((task.end - minTime) / timeRange) * chartWidth);
-        let bar = " ".repeat(startPos) + chalk.cyan("█".repeat(endPos - startPos || 1)) + chalk.green(` [${task.end - task.start} ms]`);
+    _getLine(logs, minTime, timeRange, chartWidth) {
+        const name = logs.name.padEnd(10 + 10);
+        const startPos = Math.floor(((logs.start - minTime) / timeRange) * chartWidth);
+        const endPos = Math.floor(((logs.end - minTime) / timeRange) * chartWidth);
+        let bar = " ".repeat(startPos) + chalk.cyan("█".repeat(endPos - startPos || 1)) + chalk.green(` [${logs.end - logs.start} ms]`);
         return (chalk.green(name) + " " + bar);
     }
 
-    _printLine(task, minTime, timeRange, chartWidth) {
-        let line = this._getLine(task, minTime, timeRange, chartWidth);
+    _printLine(logs, minTime, timeRange, chartWidth) {
+        let line = this._getLine(logs, minTime, timeRange, chartWidth);
         console.log(line);
-        console.log(chalk.gray(`${dayjs(task.start).format("HH:mm:ss")}-${dayjs(task.end).format("HH:mm:ss")}, traceId: ${task.traceId}, reqId:${task.id}, responseSize:${task.responseSize}, responseStatus:${task.responseStatus} `,));
+        console.log(chalk.gray(`${dayjs(logs.start).format("HH:mm:ss")}-${dayjs(logs.end).format("HH:mm:ss")}, traceId: ${logs.traceId}, reqId:${logs.id}, responseSize:${logs.responseSize}, responseStatus:${logs.responseStatus} `,));
     }
 
-    _groupLogs(parsedTasks) {
-        const grouped = parsedTasks.reduce((acc, doc) => {
+    _groupLogs(parsedLogs) {
+        const grouped = parsedLogs.reduce((acc, doc) => {
             const groupKey = doc.traceId.split('-')[0];
             if (!acc[groupKey]) acc[groupKey] = [];
             // traceIdGroup
