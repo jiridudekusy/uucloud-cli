@@ -16,6 +16,7 @@ const readLastLines = require('read-last-lines');
 const Handlebars = require("handlebars");
 const dayjs = require("dayjs");
 const {string} = require("handlebars-helpers/lib");
+const Gantt = require("../misc/gantt");
 const helpers = require("handlebars-helpers")({
     handlebars: Handlebars
 });
@@ -480,7 +481,7 @@ class LogsCommand extends Command {
         const appsFormat = this._prepareApplicationFormat(apps, useColors);
         
         await uuLogStore.tailLogs(appDeploymentUris, criteria, (logs) => 
-            this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format)
+             this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format)
         );
     }
 
@@ -672,13 +673,17 @@ class LogsCommand extends Command {
     _printLogs(logs, apps, codec, format) {
 
         //find out proper chartWidth
-        const width = process.stdout.columns - 40;
+        const width = process.stdout.columns - 60;
         console.log(`Console width: ${width} characters`);
 
         //render gant
         const Gantt = require("../misc/gantt");
         const gantt= new Gantt();
-        gantt.renderGantt(logs, width);
+        gantt.renderGantt(logs, "simple", width);
+
+        //const Tree = require("../misc/tree");
+        //const tree= new Tree();
+        //tree.renderTree(logs);
 
         //original print cmd
         //logs.length > 0 && this._console.log(logs.map(logRecord => this._formatLogRecord(logRecord, apps, codec, format)).join("\n").trim());
