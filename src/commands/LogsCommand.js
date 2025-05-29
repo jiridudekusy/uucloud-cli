@@ -87,7 +87,7 @@ const optionsDefinitions = [{
 }, {
     name: "codec",
     type: String,
-    description: "Format od result. Supported values : \"formatted\"(default), \"json\" or \"jsonstream\"(Line-delimited JSON)",
+    description: "Format od result. Supported values : \"formatted\"(default), \"json\", \"jsonstream\"(Line-delimited JSON) or \"gantt\" ",
     defaultValue: "formatted"
 }, {
     name: "filter", type: String, description: "Filter log records (on client side after records are downloaded)."
