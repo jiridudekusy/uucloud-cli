@@ -375,6 +375,7 @@ class LogsCommand extends Command {
                 }
 
                 if (options.codec === "gantt") {
+                    this._taskUtils.testOption(options.criteria && options.criteria.includes("recordType:ACCESS_LOG"), "Can not use gantt without access log criteria. use -c recordType:ACCESS_LOG");
                     let appLogStoreUri = this.getAppLogStoreUri(fullApps[0]);
                     let oidcUri = this.getOidcUri(fullApps[0]);
                     const GantConsole = require("../implementations/GanttConsole");
