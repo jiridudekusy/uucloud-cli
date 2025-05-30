@@ -90,13 +90,13 @@ class Gantt {
 
             //selection-based loop
             while (true) {
-                let result = await searchPrompt("Select cmd to get details:", lines);
+                let result = await searchPrompt("Select log to get details:", lines);
                 if (result === "exit") {
                     console.log(chalk.green('\nGoodbye!\n'));
                     process.exit(0);
                 }
                 let logItem = parsedLogs.filter(logs => logs.id === result)[0];
-                this._renderLogDetail(logItem);
+                await this._renderLogDetail(logItem);
                 await this._waitForEnter();
             }
         }
@@ -108,37 +108,38 @@ class Gantt {
         console.log("Perfmon section:")
         console.log("")
 
-        const oidcToken = await this.getAppLogStoreOidcToken(this._oidcUri);
+        if (this._oidcUri && this._appLogStoreUri) {
+            //get token for applogstore
+            const oidcToken = await this._getAppLogStoreOidcToken(this._oidcUri);
 
-        // Use ConsoleClient to list consoles
-        const uuAppLogStoreClient = new UuAppLogStoreClient({ oidcToken, baseUri:this._appLogStoreUri });
-        let auditLogs = await uuAppLogStoreClient.getAuditLogs({
-            filterMap:{
-                logTypeCode:["uuApp/perfMon"],
-                requestId: logItem.traceId
+            //get audit logs
+            const uuAppLogStoreClient = new UuAppLogStoreClient({oidcToken, baseUri: this._appLogStoreUri});
+            let auditLogs = await uuAppLogStoreClient.getAuditLogs({
+                filterMap: {
+                    logTypeCode: ["uuApp/perfMon"],
+                    requestId: logItem.traceId
+                }
+            });
+
+            let data = auditLogs.itemList[0];
+            if (data) {
+                console.log("\n");
+                console.log("Perfmon output (compact view):");
+                console.log("\n");
+                let res = renderTreeString(data.logData.log);
+                console.log(chalk.cyan(res));
+                console.log("\n");
+                console.log("Perfmon output (raw view):");
+                console.log("\n");
+                console.log(chalk.green(JSON.stringify(data, null, 2)));
+
+            } else {
+                console.log(`auditLogs not found for traceId: ${logItem.traceId} \n`);
             }
-        });
-
-        let data = auditLogs.itemList[0];
-        if (data) {
-            console.log("\n");
-            console.log("Perfmon output (compact view):");
-            console.log("\n");
-            let res = renderTreeString(data.logData.log);
-            console.log(chalk.cyan(res));
-            console.log("\n");
-            console.log("Perfmon output (raw view):");
-            console.log("\n");
-            console.log(chalk.green(JSON.stringify(data, null, 2)));
-
-        }else{
-            console.log(`auditLogs not found for traceId: ${logItem.traceId} \n`);
         }
     }
 
-    async getAppLogStoreOidcToken(oidcUri) {
-        //let oidcUri = "https://smarta-dev1.pseex20-smarta.local/uu-oidc-maing02/00219110000000000000000000000100/oidc"
-        //logger.info(`OIDC URI of uuSubApp : ${oidcUri}`);
+    async _getAppLogStoreOidcToken(oidcUri) {
         let oidcToken = await new OidcTokenProvider().getToken({
             authentication: "oidc",
             oidcUri,
@@ -150,6 +151,8 @@ class Gantt {
 
     _getInteractiveLines(parsedLogs, minTime, timeRange, chartWidth) {
         let lines = [];
+
+        //explicitly set exit line
         lines.push({
             name: "exit",
             value: "exit"
