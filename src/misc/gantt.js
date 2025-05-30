@@ -11,6 +11,11 @@ const {renderTreeString} = require("./perfmon-helper");
 
 class Gantt {
 
+    constructor(appLogStoreUri, oidcUri) {
+        this._appLogStoreUri = appLogStoreUri;
+        this._oidcUri = oidcUri;
+    }
+
     static config = {
         defaultWidthOffset: 40,
     }
@@ -103,10 +108,10 @@ class Gantt {
         console.log("Perfmon section:")
         console.log("")
 
-        const oidcToken = await this.getAppLogStoreOidcToken();
+        const oidcToken = await this.getAppLogStoreOidcToken(this._oidcUri);
 
         // Use ConsoleClient to list consoles
-        const uuAppLogStoreClient = new UuAppLogStoreClient({ oidcToken, baseUri:"https://smarta-dev1.pseex20-smarta.local/uu-applogstore-maing01/00219111100000000000000000000100/logRecord/list" });
+        const uuAppLogStoreClient = new UuAppLogStoreClient({ oidcToken, baseUri:this._appLogStoreUri });
         let auditLogs = await uuAppLogStoreClient.getAuditLogs({
             filterMap:{
                 logTypeCode:["uuApp/perfMon"],
@@ -131,8 +136,8 @@ class Gantt {
         }
     }
 
-    async getAppLogStoreOidcToken(subAppDeployment) {
-        let oidcUri = "https://smarta-dev1.pseex20-smarta.local/uu-oidc-maing02/00219110000000000000000000000100/oidc"
+    async getAppLogStoreOidcToken(oidcUri) {
+        //let oidcUri = "https://smarta-dev1.pseex20-smarta.local/uu-oidc-maing02/00219110000000000000000000000100/oidc"
         //logger.info(`OIDC URI of uuSubApp : ${oidcUri}`);
         let oidcToken = await new OidcTokenProvider().getToken({
             authentication: "oidc",

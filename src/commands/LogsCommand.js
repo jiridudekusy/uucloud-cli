@@ -17,6 +17,7 @@ const Handlebars = require("handlebars");
 const helpers = require("handlebars-helpers")({
     handlebars: Handlebars
 });
+const {getAppConfig} = require("../misc/config-utils");
 
 Handlebars.registerHelper("subAppCode", (appDeploymentUri, options) => {
     if (options.data.root._appsFormat[appDeploymentUri]) {
@@ -329,13 +330,14 @@ class LogsCommand extends Command {
                     criteria[parts[0]] = parts[1];
                 });
             }
-    
+
             let apps;
+            let fullApps;
             if (options.apps) {
                 if (options.disableResolving) {
                     apps = this._getAppsFromParams(options.apps);
                 } else {
-                    apps = await this._getAppsFromAppDeploymentList(options.apps, options.resourcePool, options, present);
+                    ({apps:apps, filteredApps:fullApps} = await this._getAppsFromAppDeploymentList(options.apps, options.resourcePool, options, present));
                 }
             } else {
                 this._taskUtils.printOtionsErrorAndExit("At least one app must be specified.");
@@ -372,10 +374,11 @@ class LogsCommand extends Command {
                     this._taskUtils.testOption(apps.length === 1, "You can follow logs up to 10 applications, but you can list history logs only for 1.");
                 }
 
-
                 if (options.codec === "gantt") {
+                    let appLogStoreUri = this.getAppLogStoreUri(fullApps[0]);
+                    let oidcUri = this.getOidcUri(fullApps[0]);
                     const GantConsole = require("../implementations/GanttConsole");
-                    this._console = new GantConsole();
+                    this._console = new GantConsole(appLogStoreUri, oidcUri);
                     await this._getLog(apps, from, to, filterFn, criteria, options);
                     await this._console.finish();
                 } else {
@@ -396,7 +399,7 @@ class LogsCommand extends Command {
      * @param {string} resourcePoolUri - Resource pool URI
      * @param {Object} options - Command options
      * @param {Object} present - Present configuration
-     * @returns {Promise<Array>} - List of applications
+     * @returns {Promise<{filteredApps, apps: *}>} - List of applications
      * @private
      */
     async _getAppsFromAppDeploymentList(appsIdentifiers, resourcePoolUri, options, present) {
@@ -418,8 +421,16 @@ class LogsCommand extends Command {
                 asid: app.asid
             };
         });
-        
-        return apps;
+
+        return {apps, filteredApps};
+    }
+
+    getAppLogStoreUri(subAppDeployment) {
+        return getAppConfig(subAppDeployment, "uu_app_auditlog_app_logstore_uri", "uuAppAuditLog.appLogStoreUri");
+    }
+
+    getOidcUri(subAppDeployment) {
+        return getAppConfig(subAppDeployment, "uu_app_oidc_providers_oidcg02_uri", "uu.app.oidc.providers.oidcg02.uri");
     }
 
     /**

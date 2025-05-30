@@ -6,8 +6,9 @@ const Gantt = require("../misc/gantt");
  */
 class GanttConsole extends Console {
 
-    constructor() {
+    constructor(appLogStoreUri, oidcUri) {
        super();
+       this._gantt = new Gantt(appLogStoreUri, oidcUri);
        this._logs=[];
     }
     /**
@@ -44,9 +45,9 @@ class GanttConsole extends Console {
 
     async finish() {
         //find out proper chartWidth
-        const gantt= new Gantt();
+        //const gantt= new Gantt();
         const width = process.stdout.columns - Gantt.config.defaultWidthOffset;
-        await gantt.renderGantt(this._logs, Gantt.modes.INTERACTIVE,  width);
+        await this._gantt.renderGantt(this._logs, Gantt.modes.INTERACTIVE,  width);
     }
 }
 
