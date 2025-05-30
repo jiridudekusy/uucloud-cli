@@ -1,6 +1,6 @@
 function renderTreeString(task, prefix = '', isLast = true) {
     const connector = isLast ? '└─ ' : '├─ ';
-    let result = prefix + connector + `${task.name} (${task.duration}ms)\n`;
+    let result = prefix + connector + `${task.group}|${task.name || "root"} (${task.duration}ms)\n`;
 
     if (task.items && task.items.length > 0) {
         const newPrefix = prefix + (isLast ? '   ' : '│  ');
