@@ -3,6 +3,10 @@ const chalk = require("chalk");
 const dayjs = require("dayjs");
 const {searchPrompt} = require("../misc/prompt-utils");
 const readline = require('readline');
+const UuAppLogStoreClient = require("../platform/uuapplogstore-client")
+const OidcTokenProvider = require("../oidc-token-provider");
+const {renderTreeString} = require("./perfmon-helper");
+
 
 
 class Gantt {
@@ -86,24 +90,58 @@ class Gantt {
                     console.log(chalk.green('\nGoodbye!\n'));
                     process.exit(0);
                 }
-                let logItem = parsedLogs.filter(logss => logss.id === result)[0];
+                let logItem = parsedLogs.filter(logs => logs.id === result)[0];
                 this._renderLogDetail(logItem);
                 await this._waitForEnter();
             }
         }
     }
 
-    _renderLogDetail(logItem) {
+    async _renderLogDetail(logItem) {
         console.log(chalk.green('\n log item detail:  \n'));
         console.log(chalk.green(JSON.stringify(logItem, null, 2)));
         console.log("Perfmon section:")
         console.log("")
-        //const PerfmonHelper = require("./perfmon-helper");
-        //const json = require("../../test/commands/perfmon-cgmesio.json");
-        //let json = require("../../test/commands/perfmon-cgmesio.json");
-        //let output = PerfmonHelper.renderTreeString(json);
-        //return output;
+
+        const oidcToken = await this.getAppLogStoreOidcToken();
+
+        // Use ConsoleClient to list consoles
+        const uuAppLogStoreClient = new UuAppLogStoreClient({ oidcToken, baseUri:"https://smarta-dev1.pseex20-smarta.local/uu-applogstore-maing01/00219111100000000000000000000100/logRecord/list" });
+        let auditLogs = await uuAppLogStoreClient.getAuditLogs({
+            filterMap:{
+                logTypeCode:["uuApp/perfMon"],
+                requestId: logItem.traceId
+            }
+        });
+
+        let data = auditLogs.itemList[0];
+        if (data) {
+            console.log("\n");
+            console.log("Perfmon output (compact view):");
+            console.log("\n");
+            let res = renderTreeString(data.logData.log);
+            console.log(chalk.cyan(res));
+            console.log("\n");
+            console.log("Perfmon output (raw view):");
+            console.log("\n");
+            console.log(chalk.green(JSON.stringify(data, null, 2)));
+
+        }else{
+            console.log(`auditLogs not found for traceId: ${logItem.traceId} \n`);
+        }
     }
+
+    async getAppLogStoreOidcToken(subAppDeployment) {
+        let oidcUri = "https://smarta-dev1.pseex20-smarta.local/uu-oidc-maing02/00219110000000000000000000000100/oidc"
+        //logger.info(`OIDC URI of uuSubApp : ${oidcUri}`);
+        let oidcToken = await new OidcTokenProvider().getToken({
+            authentication: "oidc",
+            oidcUri,
+            tokenAlias: Uri.parse(oidcUri).awid
+        });
+        return oidcToken;
+    }
+
 
     _getInteractiveLines(parsedLogs, minTime, timeRange, chartWidth) {
         let lines = [];
@@ -113,11 +151,11 @@ class Gantt {
         })
 
         let realLines =
-            parsedLogs.map(logs => {
-                let line = this._getLine(logs, minTime, timeRange, chartWidth);
+            parsedLogs.map(log => {
+                let line = this._getLine(log, minTime, timeRange, chartWidth);
                 return {
                     name: line,
-                    value: logs.id
+                    value: log.id
                 };
             });
 
@@ -173,6 +211,7 @@ class Gantt {
         console.log(axis);
         return axis;
     }
+
 
     _getLine(logs, minTime, timeRange, chartWidth) {
         const name = logs.name.padEnd(10 + 10);
