@@ -422,7 +422,7 @@ class LogsCommand extends Command {
      */
     async _getAppsFromAppDeploymentList(appsIdentifiers, resourcePoolUri, options, present) {
         let deployList;
-        if (present && present.mocks && present.mocks.getAppDeploymentList) {
+        if (present?.mocks?.getAppDeploymentList) {
             deployList = present.mocks.getAppDeploymentList;
         } else {
             const oidcToken = await this._tokenProvider.getToken(options);
@@ -436,7 +436,8 @@ class LogsCommand extends Command {
             return {
                 code: app.code,
                 appDeploymentUri: app.uri || app.asid,
-                asid: app.asid
+                asid: app.asid,
+                awscs: app.awscs || [] // Pass through awscs for business territory apps
             };
         });
 
@@ -500,25 +501,18 @@ class LogsCommand extends Command {
      */
     async _followLog(apps, filterFn, criteria, options) {
         const token = await this._tokenProvider.getToken(options);
-
-        let config = {
-            oidcToken: token
-        };
+        const useColors = options.color === "always" || (options.color === "auto" && process.stdout.isTTY);
+        const appsFormat = this._prepareApplicationFormat(apps, useColors);
+        
+        let config = { oidcToken: token };
         if (options.logStoreUri) {
             config.logStoreUri = options.logStoreUri;
         }
-        
         const uuLogStore = this._serviceFactory('LogStore', config);
-        const appDeploymentUris = apps.map(app => app.appDeploymentUri);
         
-        // Determine color mode based on options
-        const useColors = options.color === "always" || 
-                          (options.color === "auto" && process.stdout.isTTY);
-        
-        const appsFormat = this._prepareApplicationFormat(apps, useColors);
-        
-        await uuLogStore.tailLogs(appDeploymentUris, criteria, (logs) => 
-             this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format)
+        // Pass app objects instead of URIs so RealLogStore can handle business territory detection
+        await uuLogStore.tailLogs(apps, criteria, (logs) => 
+            this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format)
         );
     }
 
@@ -572,7 +566,7 @@ class LogsCommand extends Command {
                     }
                     
                     // Get logs for this app
-                    await uuLogStore.getLogs(app.appDeploymentUri, from, to, criteria, 
+                    await uuLogStore.getLogs(app, from, to, criteria, 
                         (logs) => this._storeLogs(options.output, app, appsFormat, options.codec, options.format, logs.filter(filterFn))
                     );
                 } catch (e) {
@@ -580,34 +574,9 @@ class LogsCommand extends Command {
                 }
             }
         } else {
-            if (options.allowMultiApp && apps.length > 1) {
-                // Collect logs from all apps and sort them
-                let allLogs = [];
-                
-                for (let app of apps) {
-                    try {
-                        await uuLogStore.getLogs(app.appDeploymentUri, from, to, criteria, 
-                            (logs) => {
-                                allLogs.push(...logs.filter(filterFn));
-                            }
-                        );
-                    } catch (e) {
-                        this._console.error(`Error getting logs for ${app.code}: ${e.message}`);
-                    }
-                }
-                
-                // Sort all logs by eventTime
-                allLogs.sort((a, b) => new Date(a.eventTime) - new Date(b.eventTime));
-                
-                // Print sorted logs
-                this._printLogs(allLogs, appsFormat, options.codec, options.format);
-            } else {
-                // Single app - existing behavior
-                let appDeploymentUris = apps.map(app => app.appDeploymentUri);
-                await uuLogStore.getLogs(appDeploymentUris[0], from, to, criteria, 
-                    (logs) => this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format)
-                );
-            }
+            await uuLogStore.getLogs(apps[0], from, to, criteria, 
+                (logs) => this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format)
+            );
         }
     }
 
@@ -738,6 +707,7 @@ class LogsCommand extends Command {
             logs.length > 0 && this._console.log(logs.map(logRecord => this._formatLogRecord(logRecord, apps, codec, format)).join("\n").trim());
         }
     }
+
 }
 
 // Set static properties

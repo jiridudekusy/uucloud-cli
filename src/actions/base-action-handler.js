@@ -153,16 +153,17 @@ class BaseActionHandler {
   async getAwid(subAppDeployment) {
     let awids = await this._cloudClient.getAwids(subAppDeployment);
     let awidOptions = awids.map(item => ({
-      name: item.awid,
+      name: item.awid || `${item.awid} (${item.awidUri || 'No URI'})`,
       value: item
     }));
     if (awidOptions.length === 1) {
       return awidOptions[0].value;
     } else {
-      // Use the imported searchPrompt function
       return await searchPrompt("Select awid:", awidOptions);
     }
   }
+
+
 
   async showAudit(subAppDeployment, context = {}) {
     let awid = await this.getAwid(subAppDeployment);
@@ -212,7 +213,8 @@ class BaseActionHandler {
       codec: "formatted",
       "follow": true
     };
-    let resourcePool = subAppDeployment.data.uuAppResourcePoolOid;
+    
+    let resourcePool = subAppDeployment.data?.uuAppResourcePoolOid || options.resourcePool;
     if (resourcePool) {
       logsOptions.resourcePool = resourcePool;
     }
@@ -230,8 +232,13 @@ class BaseActionHandler {
   async discoverLogStore(uuSubAppDeployment, deployList) {
     let logStore = deployList.find(
       item => item.code === "uu-cloudlogstore-maing02" && 
-      item.data.uuAppResourcePoolOid === uuSubAppDeployment.data.uuAppResourcePoolOid
+      item.data?.uuAppResourcePoolOid === uuSubAppDeployment.data?.uuAppResourcePoolOid
     );
+    
+    if (!logStore) {
+      throw new Error("Logstore not found in deployment list. Please specify logstore uri manually.");
+    }
+    
     let awids = await this._cloudClient.getAwids(logStore);
     if (awids.length !== 1) {
       throw new Error(`Logstore discovery failed. There is not single awid (${awids.length} found) for logstore ${logStore.asid}. Please specify logstore uri manually.`);

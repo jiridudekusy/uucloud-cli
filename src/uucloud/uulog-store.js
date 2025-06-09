@@ -36,7 +36,40 @@ class UuLogStore {
         }
     }
 
-    async tailLogs(appDeploymentUris, criteria, callback) {
+    async tailLogs(appDeploymentUrisOrApps, criteria, callback) {
+        if (appDeploymentUrisOrApps.length > 0 && typeof appDeploymentUrisOrApps[0] === 'string') {
+            return this._tailLogsForUris(appDeploymentUrisOrApps, criteria, callback);
+        }
+
+        const resourcePoolUris = [];
+        const businessTerritoryPromises = [];
+        
+        for (const app of appDeploymentUrisOrApps) {
+            if (app.awscs?.length > 0) {
+                const awscsWithLogs = app.awscs.filter(awsc => awsc.logDataUri);
+                for (const awsc of awscsWithLogs) {
+                    const config = this._createAwscLogStoreConfig(awsc);
+                    const btLogStore = new UuLogStore(config);
+                    const appCriteria = this._mergeAwscCriteria(criteria, awsc);
+                    const deploymentUri = awsc.uuAppWorkspaceUri || app.appDeploymentUri;
+                    
+                    const tailPromise = btLogStore.tailLogs([deploymentUri], appCriteria, callback);
+                    businessTerritoryPromises.push(tailPromise);
+                }
+            } else {
+                resourcePoolUris.push(app.appDeploymentUri);
+            }
+        }
+
+        if (resourcePoolUris.length > 0) {
+            const resourcePoolPromise = this._tailLogsForUris(resourcePoolUris, criteria, callback);
+            businessTerritoryPromises.push(resourcePoolPromise);
+        }
+        
+        await Promise.all(businessTerritoryPromises);
+    }
+
+    _tailLogsForUris(appDeploymentUris, criteria, callback) {
         let appsToWatch = appDeploymentUris.reduce((acc, appDeploymentUri) => {
             acc[appDeploymentUri] = {
                 appDeploymentUri,
@@ -70,7 +103,30 @@ class UuLogStore {
         });
     }
 
-    async getLogs(appDeploymentUri, from, to, criteria, callback) {
+    async getLogs(appDeploymentUriOrApp, from, to, criteria, callback) {
+        if (typeof appDeploymentUriOrApp === 'string') {
+            return this._getLogsForUri(appDeploymentUriOrApp, from, to, criteria, callback);
+        }
+        
+        const app = appDeploymentUriOrApp;
+
+        if (app.awscs?.length > 0) {
+            const awscsWithLogs = app.awscs.filter(awsc => awsc.logDataUri);
+            
+            for (const awsc of awscsWithLogs) {
+                const config = this._createAwscLogStoreConfig(awsc);
+                const btLogStore = new UuLogStore(config);
+                
+                const appCriteria = this._mergeAwscCriteria(criteria, awsc);
+                const deploymentUri = awsc.uuAppWorkspaceUri || app.appDeploymentUri;
+                await btLogStore.getLogs(deploymentUri, from, to, appCriteria, callback);
+            }
+        } else {
+            return this._getLogsForUri(app.appDeploymentUri, from, to, criteria, callback);
+        }
+    }
+
+    async _getLogsForUri(appDeploymentUri, from, to, criteria, callback) {
         let response;
         let result = [];
         let processedIds = {};
@@ -112,11 +168,26 @@ class UuLogStore {
         if (criteria) {
             Object.entries(criteria).forEach(([key, value]) => query.set(key, value));
         }
-        let exportCmdUri = this._buildExportCmdUri(appDeploymentUri);
+        
+        let requestUrl;
+        
+        if (this._config.useDirectLogDataUri && this._config.directLogDataUri) {
+            const logDataUrl = new URL(this._config.directLogDataUri);
+            
+            if (query.size > 0) {
+                query.forEach((value, key) => {
+                    logDataUrl.searchParams.set(key, value);
+                });
+            }
+            
+            requestUrl = logDataUrl.toString();
+        } else {
+            let exportCmdUri = this._buildExportCmdUri(appDeploymentUri);
+            requestUrl = this._buildCmd2Url(exportCmdUri, appDeploymentUri, query);
+        }
 
         let result = await this._executeCommand(
-            //FIXME: CmdHelper.buildCmd2Url does not encode  appDeploymentUri
-            this._buildCmd2Url(exportCmdUri, appDeploymentUri, query),
+            requestUrl,
             "get",
             null,
             HEADERS
@@ -332,6 +403,36 @@ class UuLogStore {
             message = message.replace(/\n/g, "\\n");
             return JSON.parse(message);
         }
+    }
+
+    /**
+     * Create log store configuration for business territory AWSC
+     * @param {Object} awsc - AWSC object with log configuration
+     * @returns {Object} - Log store configuration
+     * @private
+     */
+    _createAwscLogStoreConfig(awsc) {
+        // Use the existing configuration as base and only override what's needed
+        return {
+            ...this._config,
+            useDirectLogDataUri: true,
+            directLogDataUri: awsc.logDataUri
+        };
+    }
+
+    /**
+     * Merge base criteria with AWSC-specific criteria
+     * @param {Object} baseCriteria - Base filter criteria
+     * @param {Object} awsc - AWSC object with log criteria
+     * @returns {Object} - Merged criteria
+     * @private
+     */
+    _mergeAwscCriteria(baseCriteria, awsc) {
+        const appCriteria = {...baseCriteria};
+        if (awsc.logCriteria) {
+            Object.assign(appCriteria, awsc.logCriteria);
+        }
+        return appCriteria;
     }
 
 }

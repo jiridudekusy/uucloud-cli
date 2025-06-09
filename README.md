@@ -112,7 +112,27 @@ The kebab-case format is the preferred standard and is used in all documentation
 
 1.0.0-beta.14
 -------------
-- add gantt codec
+- **Business Territory Resource Pool Support**
+  - **Unified Parameter**: Use existing `--resource-pool` / `-r` parameter for both resource pools and business territories
+  - **PS Command**: List applications from business territories using business territory URIs with resource-pool parameter
+  - **Logs Command**: Retrieve and follow logs from applications in business territories. Logstore uri is retrieved for each plugged application automatically. 
+  - **Interactive Mode**: Select applications from both business territory resource pool type and resource pools in interactive mode
+  - **Configuration**:
+  - ```
+    {
+      "presents": {
+        "present-env": {
+			"universe-uri": "...",
+			"resourcePool": [
+				"6810827f5f8702c461c5b8f8", // resource pool oid in the universe 
+				"https://uuapp-dev.plus4u.net/uu-businessterritory-maing01/3672205402d0bc3e26fe89b7727b1f07" // base business territory uri to load the application pligged into the business territory
+			],
+			"log-store-uri": "https://uuapp.plus4u.net/uu-cloudlogstore-maing02/5414770bf91642db994180d440d0575f"
+		}
+      }
+    }
+    ```
+- **Gantt Codec Support**
   - it is activated by `--codec=gantt`
   - it is only possible to list logs for single subapp with gantt view
   - it is not possible to use `--follow` option with gantt codec
