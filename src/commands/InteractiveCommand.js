@@ -66,22 +66,38 @@ class InteractiveCommand extends Command {
             
             let deployListOptions;
             if (this._universeClient) {
-                let uuAppResourcePoolOids = deployList.map(item => item.data.uuAppResourcePoolOid);
+                let uuAppResourcePoolOids = deployList.map(item => item.data?.uuAppResourcePoolOid).filter(Boolean);
                 uuAppResourcePoolOids = [...new Set(uuAppResourcePoolOids)];
                 let uuAppResourcePools = {};
                 for (const uuAppResourcePoolOid of uuAppResourcePoolOids) {
                     uuAppResourcePools[uuAppResourcePoolOid] = await this._universeClient.getUuAppResourcePool(uuAppResourcePoolOid);
                 }
-                deployListOptions = deployList.map(item => ({
-                    name: `${uuAppResourcePools[item.data.uuAppResourcePoolOid].uuAppResourcePool.name} - ${item.code} - v${item.version}${item.tags ? ' - [' + item.tags + ']' : ''} - ${item.asid}`,
-                    value: item.asid
-                }));
+                deployListOptions = deployList.map(item => {
+                    if (item.sourceType === 'business-territory') {
+                        const unitName = item.awscs?.[0]?.unitName || 'Unknown Unit';
+                        return {
+                            name: `${unitName} - ${item.code} - v${item.version || 'N/A'}${item.tags ? ' - [' + item.tags + ']' : ''} - ${item.asid}`,
+                            value: item.asid
+                        };
+                    } else {
+                        const poolName = item.data?.uuAppResourcePoolOid && uuAppResourcePools[item.data.uuAppResourcePoolOid] ?
+                            uuAppResourcePools[item.data.uuAppResourcePoolOid].uuAppResourcePool.name :
+                            'Unknown Pool';
+                        return {
+                            name: `${poolName} - ${item.code} - v${item.version}${item.tags ? ' - [' + item.tags + ']' : ''} - ${item.asid}`,
+                            value: item.asid
+                        };
+                    }
+                });
             } else {
                 deployListOptions = deployList.map(item => {
+                    const prefix = item.sourceType === 'business-territory' ? 
+                        (item.awscs?.[0]?.unitName || 'Unknown Unit') : 
+                        'Resource Pool';
                     return {
-                        name: `${item.code} - v${item.version}${item.tags ? ' - [' + item.tags + ']' : ''} - ${item.asid}`,
+                        name: `${prefix} - ${item.code} - v${item.version || 'N/A'}${item.tags ? ' - [' + item.tags + ']' : ''} - ${item.asid}`,
                         value: item.asid
-                    }
+                    };
                 });
             }
             
@@ -108,6 +124,8 @@ class InteractiveCommand extends Command {
             throw error;
         }
     }
+
+
 }
 
 // Set static properties

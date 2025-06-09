@@ -32,7 +32,8 @@ class UuUniverseClient {
                 memory: null,
                 state: item.state,
                 uuAppServerEnvironment: item.uuAppServerEnvironment,
-                data: item
+                data: item,
+                sourceType: "resource-pool"
             };
         });
         return deployList;

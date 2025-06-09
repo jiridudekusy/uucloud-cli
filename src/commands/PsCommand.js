@@ -73,7 +73,7 @@ class PsCommand extends Command {
       }
       
       // Execute the command
-      await this._getResourcePoolInfo(options.resourcePool, options, present);
+      await this._getResourcePoolInfo(options, present);
     } catch (error) {
       this._console.error(`Error: ${error.message}`);
       throw error;
@@ -82,24 +82,24 @@ class PsCommand extends Command {
 
   /**
    * Get and display resource pool information
-   * @param {string} resourcePoolUri - Resource pool URI
    * @param {Object} options - Command options
    * @param {Object} present - Present configuration
    * @returns {Promise<void>}
    * @private
    */
-  async _getResourcePoolInfo(resourcePoolUri, options, present) {
+  async _getResourcePoolInfo(options, present) {
     let deployList;
     
-    if (present && present.mocks && present.mocks.getAppDeploymentList) {
+    if (present?.mocks?.getAppDeploymentList) {
       deployList = present.mocks.getAppDeploymentList;
+      deployList.forEach(app => app.source = app.source || 'resource-pool-mock');
     } else {
       const oidcToken = await this._tokenProvider.getToken(options);
       
       // Create the cloud client using CloudClient interface
       const uuCloud = this._serviceFactory('CloudClient', oidcToken, options);
       
-      deployList = await uuCloud.getAppDeploymentList(resourcePoolUri);
+      deployList = await uuCloud.getAppDeploymentList(options.resourcePool);
     }
     
     if (options.codec === "table") {
@@ -189,15 +189,17 @@ class PsCommand extends Command {
           asid: label,
           code: "",
           version: "",
+          tags: "",
           nodeSize: "",
           nodeCount: 0,
-          tags: "",
           cpu: 0,
           memory: 0,
           state: ""
         }
     );
   }
+
+
 }
 
 // Set static properties

@@ -7,14 +7,17 @@ function filterAppDeployments(deployList, appsIdentifiers) {
         if (appsIdentifiers.indexOf(app.uri) > -1) {
             return true;
         }
-        if (app.asid && appsIdentifiers.filter(appId => app.asid.startsWith(appId)).length > 0) {
+        if (appsIdentifiers.some(appId => 
+            (app.asid && app.asid.startsWith(appId)) || 
+            (app.code && app.code.includes(appId))
+        )) {
             return true;
         }
 
         let appTags = app.tags || [];
         let matchedIdentifiers = appsIdentifiers.map(id => id.split(",")).filter(tags => {
             for (let tag of tags) {
-                if (!appTags.includes(tag)&&!(app.code && app.code.includes(tag))) {
+                if (!appTags.includes(tag) && !app.code?.includes(tag)) {
                     return false;
                 }
             }
