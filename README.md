@@ -104,7 +104,7 @@ The kebab-case format is the preferred standard and is used in all documentation
 
 # Release Notes
 
-x.x.x
+1.0.0-beta.14
 -------------
 - add gantt codec
   - it is activated by `--codec=gantt`
