@@ -26,8 +26,9 @@ class UuAppLogStoreClient {
             }
             throw e;
         }
-        return result.data;
 
+        // Return the full result so that callers can access uuAppErrorMap if needed
+        return result.data;
     }
 }
 

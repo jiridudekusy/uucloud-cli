@@ -2,21 +2,42 @@ const Console = require('../interfaces/Console');
 const Gantt = require("../misc/gantt");
 
 /**
- * Real implementation of Console using Node.js console
+ * Real implementation of Console using Node.js console for Gantt charts
  */
 class GanttConsole extends Console {
 
-    constructor(appLogStoreUri, oidcUri) {
+    /**
+     * Create a new GanttConsole instance
+     * @param {string} appLogStoreUri - App log store URI
+     * @param {string} oidcUri - OIDC URI
+     * @param {Object} dependencies - Optional dependencies for testing
+     */
+    constructor(appLogStoreUri, oidcUri, dependencies = {}) {
        super();
-       this._gantt = new Gantt(appLogStoreUri, oidcUri);
-       this._logs=[];
+       
+       // Prepare dependencies for Gantt
+       const ganttDependencies = {
+           appLogStoreUri,
+           oidcUri,
+           console: this,
+           uuAppLogStoreClientFactory: dependencies.uuAppLogStoreClientFactory,
+           oidcTokenProviderFactory: dependencies.oidcTokenProviderFactory
+       };
+       
+       this._gantt = new Gantt(ganttDependencies);
+       this._logs = [];
     }
+    
     /**
      * Log a message to standard output
      * @param {string} message - Message to log
      */
     log(message) {
-       this._logs.push(...message);
+       if (Array.isArray(message)) {
+           this._logs.push(...message);
+       } else {
+           console.log(message);
+       }
     }
 
     /**
@@ -24,7 +45,11 @@ class GanttConsole extends Console {
      * @param {string} message - Error message to log
      */
     error(message) {
-        this._logs.push(...message);
+        if (Array.isArray(message)) {
+            this._logs.push(...message);
+        } else {
+            console.error(message);
+        }
     }
 
     /**
@@ -32,7 +57,11 @@ class GanttConsole extends Console {
      * @param {string} message - Info message to log
      */
     info(message) {
-        this._logs.push(...message);
+        if (Array.isArray(message)) {
+            this._logs.push(...message);
+        } else {
+            console.info(message);
+        }
     }
 
     /**
@@ -40,14 +69,21 @@ class GanttConsole extends Console {
      * @param {string} message - Warning message to log
      */
     warn(message) {
-        this._logs.push(...message);
+        if (Array.isArray(message)) {
+            this._logs.push(...message);
+        } else {
+            console.warn(message);
+        }
     }
 
+    /**
+     * Finish processing and render the Gantt chart
+     * @returns {Promise<void>}
+     */
     async finish() {
         //find out proper chartWidth
-        //const gantt= new Gantt();
         const width = process.stdout.columns - Gantt.config.defaultWidthOffset;
-        await this._gantt.renderGantt(this._logs, Gantt.modes.INTERACTIVE,  width);
+        await this._gantt.renderGantt(this._logs, Gantt.modes.INTERACTIVE, width);
     }
 }
 

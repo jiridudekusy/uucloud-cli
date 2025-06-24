@@ -1,19 +1,48 @@
-const {Uri} = require("uu_appg01_core-uri");
+const { Uri } = require("uu_appg01_core-uri");
 const chalk = require("chalk");
 const dayjs = require("dayjs");
-const {searchPrompt} = require("../misc/prompt-utils");
+const { searchPrompt } = require("../misc/prompt-utils");
 const readline = require('readline');
-const UuAppLogStoreClient = require("../platform/uuapplogstore-client")
-const OidcTokenProvider = require("../oidc-token-provider");
-const {renderTreeString} = require("./perfmon-helper");
-
-
+const { renderTreeString } = require("./perfmon-helper");
 
 class Gantt {
 
-    constructor(appLogStoreUri, oidcUri) {
-        this._appLogStoreUri = appLogStoreUri;
-        this._oidcUri = oidcUri;
+    /**
+     * Create a new Gantt instance
+     * @param {Object} dependencies - Injected dependencies
+     * @param {string} dependencies.appLogStoreUri - App log store URI
+     * @param {string} dependencies.oidcUri - OIDC URI
+     * @param {Object} dependencies.console - Console implementation
+     * @param {Function} dependencies.uuAppLogStoreClientFactory - Factory for creating UuAppLogStoreClient
+     * @param {Function} dependencies.oidcTokenProviderFactory - Factory for creating OidcTokenProvider
+     */
+    constructor(dependencies = {}) {
+        this._appLogStoreUri = dependencies.appLogStoreUri;
+        this._oidcUri = dependencies.oidcUri;
+        this._console = dependencies.console || console;
+        this._uuAppLogStoreClientFactory = dependencies.uuAppLogStoreClientFactory || this._defaultUuAppLogStoreClientFactory;
+        this._oidcTokenProviderFactory = dependencies.oidcTokenProviderFactory || this._defaultOidcTokenProviderFactory;
+    }
+
+    /**
+     * Default factory for UuAppLogStoreClient
+     * @param {Object} config - Client configuration
+     * @returns {Object} - UuAppLogStoreClient instance
+     * @private
+     */
+    _defaultUuAppLogStoreClientFactory(config) {
+        const UuAppLogStoreClient = require("../platform/uuapplogstore-client");
+        return new UuAppLogStoreClient(config);
+    }
+
+    /**
+     * Default factory for OidcTokenProvider
+     * @returns {Object} - OidcTokenProvider instance
+     * @private
+     */
+    _defaultOidcTokenProviderFactory() {
+        const OidcTokenProvider = require("../oidc-token-provider");
+        return new OidcTokenProvider();
     }
 
     static config = {
@@ -36,7 +65,7 @@ class Gantt {
         const parsedLogs = logs.filter(l => (l.urlPath)).map(l => {
 
             if (!l.urlPath) {
-                console.log(t);
+                this._console.log(t);
                 throw new Error("non-parseable log");
             }
 
@@ -52,7 +81,7 @@ class Gantt {
         });
 
         // Find global min/max
-        const minTime = Math.min(...parsedLogs.map(l=> l.start));
+        const minTime = Math.min(...parsedLogs.map(l => l.start));
         const maxTime = Math.max(...parsedLogs.map(l => l.end));
         const timeRange = maxTime - minTime;
 
@@ -63,27 +92,27 @@ class Gantt {
         if (mode === Gantt.modes.GROUPED) {
             const grouped = this._groupLogs(parsedLogs);
             for (const [groupKey, docs] of Object.entries(grouped)) {
-                console.log(); // spacing
-                console.log(`traceID group: ${groupKey}`);
+                this._console.log(); // spacing
+                this._console.log(`traceID group: ${groupKey}`);
                 docs.forEach((logs) => {
                     this._printLine(logs, minTime, timeRange, chartWidth);
                 })
             }
-            console.log(); //spacing
+            this._console.log(); //spacing
         } else if (mode === Gantt.modes.SIMPLE) {
             // Print each logs
             parsedLogs.forEach(logs => {
                 this._printLine(logs, minTime, timeRange, chartWidth);
             });
             // spacing
-            console.log();
+            this._console.log();
         } else if (mode === Gantt.modes.INTERACTIVE) {
             // Print each logs at first
             parsedLogs.forEach(logs => {
                 this._printLine(logs, minTime, timeRange, chartWidth);
             });
             //spacing
-            console.log();
+            this._console.log();
 
             //prepare lines for selections
             let lines = this._getInteractiveLines(parsedLogs, minTime, timeRange, chartWidth);
@@ -92,7 +121,7 @@ class Gantt {
             while (true) {
                 let result = await searchPrompt("Select log to get details:", lines);
                 if (result === "exit") {
-                    console.log(chalk.green('\nGoodbye!\n'));
+                    this._console.log(chalk.green('\nGoodbye!\n'));
                     process.exit(0);
                 }
                 let logItem = parsedLogs.filter(logs => logs.id === result)[0];
@@ -103,17 +132,17 @@ class Gantt {
     }
 
     async _renderLogDetail(logItem) {
-        console.log(chalk.green('\n log item detail:  \n'));
-        console.log(chalk.green(JSON.stringify(logItem, null, 2)));
-        console.log("Perfmon section:")
-        console.log("")
+        this._console.log(chalk.green('\n log item detail:  \n'));
+        this._console.log(chalk.green(JSON.stringify(logItem, null, 2)));
+        this._console.log("Perfmon section:")
+        this._console.log("")
 
         if (this._oidcUri && this._appLogStoreUri) {
             //get token for applogstore
             const oidcToken = await this._getAppLogStoreOidcToken(this._oidcUri);
 
             //get audit logs
-            const uuAppLogStoreClient = new UuAppLogStoreClient({oidcToken, baseUri: this._appLogStoreUri});
+            const uuAppLogStoreClient = this._uuAppLogStoreClientFactory({ oidcToken, baseUri: this._appLogStoreUri });
             let auditLogs = await uuAppLogStoreClient.getAuditLogs({
                 filterMap: {
                     logTypeCode: ["uuApp/perfMon"],
@@ -121,33 +150,97 @@ class Gantt {
                 }
             });
 
+            // Check for warnings in uuAppErrorMap
+            if (auditLogs.uuAppErrorMap && Object.keys(auditLogs.uuAppErrorMap).length > 0) {
+                this._console.error(chalk.red("Warning(s) found in uuApp response:"));
+                this._console.error(JSON.stringify(auditLogs.uuAppErrorMap, null, 2));
+
+                this._console.log(chalk.yellow("Attempting fallback search using logTime and usecase..."));
+
+                try {
+                    // Extract usecase from logItem.urlPath
+                    const useCase = Uri.parse(logItem.urlPath).getUseCase();
+                    this._console.log(chalk.yellow("useCase: " + useCase));
+                    // Calculate time range around the log item (add some buffer time)
+                    const logTime = new Date(logItem.eventTime);
+                    const bufferMs = 120000; // 5 seconds buffer
+                    const fromTime = new Date(logTime.getTime() - bufferMs);
+                    const toTime = new Date(logTime.getTime() + logItem.responseTime + bufferMs);
+
+                    // Try fallback search with logTime and usecase
+                    let fallbackAuditLogs = await uuAppLogStoreClient.getAuditLogs({
+                        filterMap: {
+                            logTypeCode: ["uuApp/perfMon"],
+                            logTime: {
+                                from: fromTime.toISOString(),
+                                to: toTime.toISOString()
+                            },
+                            useCase
+                        }
+                    });
+                    this._console.log({
+                        filterMap: {
+                            logTypeCode: ["uuApp/perfMon"],
+                            logTime: {
+                                from: fromTime.toISOString(),
+                                to: toTime.toISOString()
+                            },
+                            useCase
+                        }});
+                    this._console.log(JSON.stringify(fallbackAuditLogs, null, 2));
+                    // Iterate through results to find the matching record
+                    let matchingRecord = null;
+                    if (fallbackAuditLogs.itemList && fallbackAuditLogs.itemList.length > 0) {
+                        for (let record of fallbackAuditLogs.itemList) {
+                            // Try to match by traceId if available in the log data
+                            if (record.requestId === logItem.traceId) {
+                                matchingRecord = record;
+                            }
+                        }
+                    }
+
+                    if (matchingRecord) {
+                        this._console.log(chalk.green("Fallback search successful!"));
+                        auditLogs = { itemList: [matchingRecord] };
+                    } else {
+                        this._console.log(chalk.yellow("Fallback search returned no matching records"));
+                        auditLogs = { itemList: [] };
+                    }
+
+                } catch (fallbackError) {
+                    this._console.error(chalk.red("Fallback search failed:"), fallbackError.message);
+                    throw new Error("Primary search failed and fallback search also failed. Please check the warnings above.");
+                }
+
+            }
+
             let data = auditLogs.itemList[0];
             if (data) {
-                console.log("\n");
-                console.log("Perfmon output (compact view):");
-                console.log("\n");
+                this._console.log("\n");
+                this._console.log("Perfmon output (compact view):");
+                this._console.log("\n");
                 let res = renderTreeString(data.logData.log);
-                console.log(chalk.cyan(res));
-                console.log("\n");
-                console.log("Perfmon output (raw view):");
-                console.log("\n");
-                console.log(chalk.green(JSON.stringify(data, null, 2)));
+                this._console.log(chalk.cyan(res));
+                this._console.log("\n");
+                this._console.log("Perfmon output (raw view):");
+                this._console.log("\n");
+                this._console.log(chalk.green(JSON.stringify(data, null, 2)));
 
             } else {
-                console.log(`auditLogs not found for traceId: ${logItem.traceId} \n`);
+                this._console.log(`auditLogs not found for traceId: ${logItem.traceId} \n`);
             }
         }
     }
 
     async _getAppLogStoreOidcToken(oidcUri) {
-        let oidcToken = await new OidcTokenProvider().getToken({
+        let oidcTokenProvider = this._oidcTokenProviderFactory();
+        let oidcToken = await oidcTokenProvider.getToken({
             authentication: "oidc",
             oidcUri,
             tokenAlias: Uri.parse(oidcUri).awid
         });
         return oidcToken;
     }
-
 
     _getInteractiveLines(parsedLogs, minTime, timeRange, chartWidth) {
         let lines = [];
@@ -180,7 +273,7 @@ class Gantt {
 
             rl.question(chalk.gray('Press Enter to go back to the list...'), () => {
                 rl.close();
-                console.log(); // for spacing
+                this._console.log(); // for spacing
                 resolve();
             });
         });
@@ -215,11 +308,10 @@ class Gantt {
                 axis += ' '.repeat(stepCharWidth);
             }
         }
-        console.log(chalk.bold("\nGantt Chart (Datetime):\n"));
-        console.log(axis);
+        this._console.log(chalk.bold("\nGantt Chart (Datetime):\n"));
+        this._console.log(axis);
         return axis;
     }
-
 
     _getLine(logs, minTime, timeRange, chartWidth) {
         const name = logs.name.padEnd(10 + 10);
@@ -231,8 +323,8 @@ class Gantt {
 
     _printLine(logs, minTime, timeRange, chartWidth) {
         let line = this._getLine(logs, minTime, timeRange, chartWidth);
-        console.log(line);
-        console.log(chalk.gray(`${dayjs(logs.start).format("HH:mm:ss")}-${dayjs(logs.end).format("HH:mm:ss")}, traceId: ${logs.traceId}, reqId:${logs.id}, responseSize:${logs.responseSize}, responseStatus:${logs.responseStatus} `,));
+        this._console.log(line);
+        this._console.log(chalk.gray(`${dayjs(logs.start).format("HH:mm:ss")}-${dayjs(logs.end).format("HH:mm:ss")}, traceId: ${logs.traceId}, reqId:${logs.id}, responseSize:${logs.responseSize}, responseStatus:${logs.responseStatus} `,));
     }
 
     _groupLogs(parsedLogs) {
@@ -247,6 +339,5 @@ class Gantt {
         return grouped;
     }
 }
-
 
 module.exports = Gantt;
