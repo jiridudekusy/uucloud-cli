@@ -104,6 +104,12 @@ The kebab-case format is the preferred standard and is used in all documentation
 
 # Release Notes
 
+1.0.0-beta.15
+-------------
+- Add `--allow-multi-app` option to logs command for downloading logs from multiple applications without `--follow`
+  - Logs from all specified applications are collected and sorted chronologically by eventTime
+  - Works with all output codecs including gantt (gantt uses first app's configuration for additional data fetching)
+
 1.0.0-beta.14
 -------------
 - add gantt codec

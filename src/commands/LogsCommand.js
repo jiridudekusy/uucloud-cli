@@ -107,6 +107,10 @@ const optionsDefinitions = [{
     type: String,
     description: "Control color output: \"auto\" (default, colorize output when stdout is a terminal), \"always\" (always use colors, even when piped), or \"never\" (never use colors).",
     defaultValue: "auto"
+}, {
+    name: "allow-multi-app",
+    type: Boolean,
+    description: "Allow downloading logs from multiple applications without --follow. Logs will be sorted chronologically but may consume significant memory for large volumes."
 }, ...commonOptionsDefinitionsWithPresentAndApps];
 
 const help = [{
@@ -131,6 +135,9 @@ const help = [{
     }, {
         example: "uucloud logs --since 24h -o logs dev1",
         description: "Gets logs of all applications with tag \"dev1\" and saves them to directoey \"logs\"."
+    }, {
+        example: "uucloud logs --since 1h --allow-multi-app dev1 dev2",
+        description: "Gets logs from multiple applications with tags \"dev1\" and \"dev2\", sorted chronologically."
     },]
 }, {
     header: "How to use uuCloudLogStoreg02 ?", content: [`${`uucloud-cli is able to work with both generations of uuCloudLogstore. The key difference is that uuCloudLogStoreg02
@@ -221,6 +228,12 @@ In case that you want get logs via asid just put it into command line on place w
 
     Please note that filtering is not function of uuLogStore, but it is done on your machine. This means that if you are trying to find one specific record
     in logs for the whole week, all those logs must be fetched from uuLogStore and filtered on your machine and it could take some time.`
+}, {
+    header: "Multi-application log downloading", content: `By default, downloading logs without --follow is limited to single applications to prevent excessive memory usage.
+    
+    Use --allow-multi-app to download logs from multiple applications. Logs will be collected from all specified apps and sorted chronologically by eventTime.
+    
+    Note: When using --allow-multi-app with --codec=gantt, all applications must use the same OIDC and appLogStore configuration (the first app's configuration will be used for additional data fetching).`
 }, {
     header: "Format and filtering examples", content: [{
         example: escapeChalk(String.raw`uucloud logs -f ues:ABC:DEF:GHI --filter "recordType == \"ACCESS_LOG\"" --format "{{date log.eventTime 'YYYY-MM-DD HH:mm:ss,SSS'}} {{log.requestLine}}"`),
@@ -370,12 +383,16 @@ class LogsCommand extends Command {
                     this._console.error(`Getting logs since : ${from.toISOString()} until: ${to.toISOString()}`);
                 }
                 this._console.error(apps.map(app => `Getting logs for application ${app.code}:` + app.appDeploymentUri).join("\n"));
-                if (!options.output) {
-                    this._taskUtils.testOption(apps.length === 1, "You can follow logs up to 10 applications, but you can list history logs only for 1.");
+                if (!options.output && !options.allowMultiApp) {
+                    this._taskUtils.testOption(apps.length === 1, "You can follow logs up to 10 applications, but you can list history logs only for 1. Use --allow-multi-app to override.");
                 }
 
                 if (options.codec === "gantt") {
                     this._taskUtils.testOption(options.criteria && options.criteria.includes("recordType:ACCESS_LOG"), "Can not use gantt without access log criteria. use -c recordType:ACCESS_LOG");
+                    this._taskUtils.testOption(!options.disableResolving, "Gantt codec cannot be used with --disable-resolving (-n) option.");
+                    if (options.allowMultiApp && apps.length > 1) {
+                        this._console.error("Warning: Gantt codec with multiple apps will use the first app's OIDC and appLogStore configuration.");
+                    }
                     let appLogStoreUri = this.getAppLogStoreUri(fullApps[0]);
                     let oidcUri = this.getOidcUri(fullApps[0]);
                     const GantConsole = require("../implementations/GanttConsole");
@@ -563,10 +580,34 @@ class LogsCommand extends Command {
                 }
             }
         } else {
-            let appDeploymentUris = apps.map(app => app.appDeploymentUri);
-            await uuLogStore.getLogs(appDeploymentUris[0], from, to, criteria, 
-                (logs) => this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format)
-            );
+            if (options.allowMultiApp && apps.length > 1) {
+                // Collect logs from all apps and sort them
+                let allLogs = [];
+                
+                for (let app of apps) {
+                    try {
+                        await uuLogStore.getLogs(app.appDeploymentUri, from, to, criteria, 
+                            (logs) => {
+                                allLogs.push(...logs.filter(filterFn));
+                            }
+                        );
+                    } catch (e) {
+                        this._console.error(`Error getting logs for ${app.code}: ${e.message}`);
+                    }
+                }
+                
+                // Sort all logs by eventTime
+                allLogs.sort((a, b) => new Date(a.eventTime) - new Date(b.eventTime));
+                
+                // Print sorted logs
+                this._printLogs(allLogs, appsFormat, options.codec, options.format);
+            } else {
+                // Single app - existing behavior
+                let appDeploymentUris = apps.map(app => app.appDeploymentUri);
+                await uuLogStore.getLogs(appDeploymentUris[0], from, to, criteria, 
+                    (logs) => this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format)
+                );
+            }
         }
     }
 
