@@ -21,8 +21,14 @@ class UucloudClient {
 
         let allApps = [];
 
-        const rpApps = await this.provider.getAppDeploymentList(regularResourcePools);
-        allApps.push(...rpApps);
+        if (regularResourcePools.length > 0) {
+            const rpApps = await this.provider.getAppDeploymentList(regularResourcePools);
+            if (rpApps && rpApps.length > 0) {
+                // Mark apps as coming from resource pool
+                const markedRpApps = rpApps.map(app => ({...app, sourceType: 'resource-pool'}));
+                allApps.push(...markedRpApps);
+            }
+        }
 
         const resourcePoolAsids = allApps.map(app => app.asid);
         const btApps = await this.uuBtProvider.getAppDeploymentList(businessTerritoryUris, resourcePoolAsids);

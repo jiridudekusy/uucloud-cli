@@ -1,5 +1,4 @@
 const { AppClient } = require("uu_appg01_core-appclient");
-const { getLogAccessAttributes, extractLogCriteriaFromUri } = require('../misc/log-utils');
 const { Uri } = require("uu_appg01_core-uri");
 
 /**
@@ -118,26 +117,12 @@ class BusinessTerritoryClient {
             if (!appInstances?.length) continue;
 
             const appInstallInfo = installedAppsResult.find(app => app.code === appCode);
-            const awscs = await Promise.all(appInstances.map(async instance => {
-                const awsc = {
-                    awid: this._extractAwidFromUri(instance.uuAppWorkspaceUri, instance.awid || instance.oid),
-                    uuAppWorkspaceUri: instance.uuAppWorkspaceUri,
-                    oid: instance.oid,
-                    state: instance.state,
-                    unitName: instance.unitName
-                };
-
-                // Only call getLogAccessAttributes if this app is not already in resource pool
-                const asid = this._extractAsidFromAppKey(instance.appKey, awsc.awid);
-                if (!skipAsids.includes(asid)) {
-                    const logAccessAttributes = await getLogAccessAttributes(instance.uuAppWorkspaceUri, this.token);
-                    if (logAccessAttributes?.logDataUri) {
-                        awsc.logDataUri = logAccessAttributes.logDataUri;
-                        awsc.logCriteria = extractLogCriteriaFromUri(logAccessAttributes.logDataUri);
-                    }
-                }
-
-                return awsc;
+            const awscs = appInstances.map(instance => ({
+                awid: this._extractAwidFromUri(instance.uuAppWorkspaceUri, instance.awid || instance.oid),
+                uuAppWorkspaceUri: instance.uuAppWorkspaceUri,
+                oid: instance.oid,
+                state: instance.state,
+                unitName: instance.unitName
             }));
 
             appInstances.forEach(instance => {
