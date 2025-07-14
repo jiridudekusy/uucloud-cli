@@ -126,6 +126,7 @@ The kebab-case format is the preferred standard and is used in all documentation
       }
     }
     ```
+- Bugfix: correctly cache token
 1.0.0-beta.15
 -------------
 - Add `--allow-multi-app` option to logs command for downloading logs from multiple applications without `--follow`

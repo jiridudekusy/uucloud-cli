@@ -56,7 +56,7 @@ class OidcTokenProvider {
 
     async getToken(options) {
         if (this.oidcTokenCache) {
-            return oidcTokenCache;
+            return this.oidcTokenCache;
         }
         let mode;
         if (options) {
