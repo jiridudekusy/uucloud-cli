@@ -18,6 +18,7 @@ const helpers = require("handlebars-helpers")({
     handlebars: Handlebars
 });
 const {getAppConfig} = require("../misc/config-utils");
+const { getLogAccessAttributes, extractLogCriteriaFromUri } = require('../misc/log-utils');
 
 Handlebars.registerHelper("subAppCode", (appDeploymentUri, options) => {
     if (options.data.root._appsFormat[appDeploymentUri]) {
@@ -351,6 +352,9 @@ class LogsCommand extends Command {
                     apps = this._getAppsFromParams(options.apps);
                 } else {
                     ({apps:apps, filteredApps:fullApps} = await this._getAppsFromAppDeploymentList(options.apps, options.resourcePool, options, present));
+                    
+                    // Populate log access attributes for business territory apps
+                    apps = await this._populateLogAccessAttributes(apps, options);
                 }
             } else {
                 this._taskUtils.printOtionsErrorAndExit("At least one app must be specified.");
@@ -453,6 +457,58 @@ class LogsCommand extends Command {
     }
 
     /**
+     * Fetch log access attributes for business territory apps
+     * @param {Array} apps - List of applications
+     * @param {Object} options - Command options
+     * @returns {Promise<Array>} - Apps with log access attributes populated
+     * @private
+     */
+    async _populateLogAccessAttributes(apps, options) {
+        // Check if we have any business territory apps that need log access attributes
+        const hasBusinessTerritoryApps = apps.some(app => app.awscs && app.awscs.length > 0);
+        if (!hasBusinessTerritoryApps) {
+            return apps; // No business territory apps, return as-is
+        }
+        
+        // Only get token when we actually need it
+        const token = await this._tokenProvider.getToken(options);
+        const populatedApps = [];
+        
+        for (const app of apps) {
+            if (app.awscs && app.awscs.length > 0) {
+                // This is a business territory app - fetch log access attributes for each AWSC
+                const populatedAwscs = [];
+                
+                for (const awsc of app.awscs) {
+                    const populatedAwsc = { ...awsc };
+                    
+                    try {
+                        const logAccessAttributes = await getLogAccessAttributes(awsc.uuAppWorkspaceUri, token);
+                        if (logAccessAttributes?.logDataUri) {
+                            populatedAwsc.logDataUri = logAccessAttributes.logDataUri;
+                            populatedAwsc.logCriteria = extractLogCriteriaFromUri(logAccessAttributes.logDataUri);
+                        }
+                    } catch (error) {
+                        this._console.error(`Warning: Could not fetch log access attributes for ${awsc.uuAppWorkspaceUri}: ${error.message}`);
+                    }
+                    
+                    populatedAwscs.push(populatedAwsc);
+                }
+                
+                populatedApps.push({
+                    ...app,
+                    awscs: populatedAwscs
+                });
+            } else {
+                // Regular resource pool app - no change needed
+                populatedApps.push(app);
+            }
+        }
+        
+        return populatedApps;
+    }
+
+    /**
      * Get applications from parameters
      * @param {Array} appsIdentifiers - App identifiers
      * @returns {Array} - List of applications
@@ -492,7 +548,7 @@ class LogsCommand extends Command {
 
     /**
      * Follow logs in real-time
-     * @param {Array} apps - List of applications
+     * @param {Array} apps - List of applications (already populated with log access attributes)
      * @param {Function} filterFn - Filter function
      * @param {Object} criteria - Filter criteria
      * @param {Object} options - Command options
@@ -574,9 +630,33 @@ class LogsCommand extends Command {
                 }
             }
         } else {
-            await uuLogStore.getLogs(apps[0], from, to, criteria, 
-                (logs) => this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format)
-            );
+            if (options.allowMultiApp && apps.length > 1) {
+                // Collect logs from all apps and sort them
+                let allLogs = [];
+                
+                for (let app of apps) {
+                    try {
+                        await uuLogStore.getLogs(app, from, to, criteria, 
+                            (logs) => {
+                                allLogs.push(...logs.filter(filterFn));
+                            }
+                        );
+                    } catch (e) {
+                        this._console.error(`Error getting logs for ${app.code}: ${e.message}`);
+                    }
+                }
+                
+                // Sort all logs by eventTime
+                allLogs.sort((a, b) => new Date(a.eventTime) - new Date(b.eventTime));
+                
+                // Print sorted logs
+                this._printLogs(allLogs, appsFormat, options.codec, options.format);
+            } else {
+                // Single app - existing behavior
+                await uuLogStore.getLogs(apps[0], from, to, criteria, 
+                    (logs) => this._printLogs(logs.filter(filterFn), appsFormat, options.codec, options.format)
+                );
+            }
         }
     }
 
@@ -643,6 +723,16 @@ class LogsCommand extends Command {
         // Convert array to object with appDeploymentUri as keys
         return formattedApps.reduce((acc, app) => {
             acc[app.appDeploymentUri] = app;
+            
+            // For business territory apps, also add entries for AWSC workspace URIs
+            if (app.awscs && app.awscs.length > 0) {
+                app.awscs.forEach(awsc => {
+                    if (awsc.uuAppWorkspaceUri) {
+                        acc[awsc.uuAppWorkspaceUri] = app;
+                    }
+                });
+            }
+            
             return acc;
         }, {});
     }
