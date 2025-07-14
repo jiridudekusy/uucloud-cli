@@ -14,7 +14,7 @@ function filterAppDeployments(deployList, appsIdentifiers) {
         let appTags = app.tags || [];
         let matchedIdentifiers = appsIdentifiers.map(id => id.split(",")).filter(tags => {
             for (let tag of tags) {
-                if (!appTags.includes(tag)&&!app.code?.includes(tag)) {
+                if (!appTags.includes(tag)&&!(app.code && app.code.includes(tag))) {
                     return false;
                 }
             }

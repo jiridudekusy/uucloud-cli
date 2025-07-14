@@ -146,7 +146,7 @@ describe('LogsCommand', () => {
       codec: 'formatted',
       resourcePool: 'test-resource-pool',
       apps: ['ues:test:app:1'],
-      'disable-resolving': true
+      disableResolving: true
     });
     
     logStore.getLogs.mockImplementation((uri, from, to, criteria, callback) => {
