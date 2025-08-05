@@ -54,22 +54,7 @@ describe('UseCommand', () => {
     expect(console.log).toHaveBeenCalled();
   });
   
-  test('should handle validation error through taskUtils.testOption', async () => {
-    // Arrange
-    taskUtils.parseCliArguments.mockReturnValue({ resourcePool: 'invalid-uri' });
-    
-    // Mock the taskUtils.testOption to throw error when called with a test that returns false
-    taskUtils.testOption.mockImplementation((test, message) => {
-      if (!test) {
-        throw new Error(message);
-      }
-    });
-    
-    // Act & Assert
-    await expect(command.execute([])).rejects.toThrow();
-    expect(console.error).toHaveBeenCalled();
-  });
-  
+
   test('should display updated configuration', async () => {
     // Arrange
     const mockOptions = { resourcePool: ['new-resource-pool'] };

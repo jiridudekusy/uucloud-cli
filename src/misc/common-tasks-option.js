@@ -145,11 +145,6 @@ function verifyCommonOptionsDefinitionsWithResourcePool(options, taskUtils) {
         if (!Array.isArray(options.resourcePool)) {
             options.resourcePool = [options.resourcePool];
         }
-        if(options.universeUri){
-
-        }else {
-            options.resourcePool.forEach(r => taskUtils.testOption(UESUri.parse(r), "Resource pool uri must be valid UES uri."));
-        }
     }
 }
 

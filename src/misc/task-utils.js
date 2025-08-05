@@ -140,7 +140,7 @@ class TaskUtils {
 
   testOption(test, errorMessage){
     if(!test){
-      this.printOtionsErrorAndExit(errorMessage, false);
+      throw new Error(errorMessage);
     }
   }
 

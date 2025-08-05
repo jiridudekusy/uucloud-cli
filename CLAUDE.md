@@ -47,6 +47,20 @@ This is a Node.js CLI application for managing uuCloud deployments. The applicat
 - Mock implementations available in `test/mocks/`
 - Coverage reports generated in `coverage/` directory
 
+#### Key Testing Principles
+- **Minimal Mocking Strategy**: Only mock external dependencies (network calls, APIs) rather than internal business logic
+  - Mock only specific methods that make network calls: `UuCloud.prototype._executeCommand`, `UuUniverseClient.prototype.#commandGet`, `AppClient.get`
+  - Use real implementations for internal services like TaskUtils, Container, and business logic
+- **Real Dependency Injection**: Use the actual DI container in tests to ensure realistic service wiring
+  - Create container with `new Container()` and register mock services
+  - Use `container.createCommand()` to instantiate commands with proper dependency injection
+- **Resource Pool Type Support**: Tests must handle all three resource pool types and their validation rules:
+  - **C3/UuCloud**: UES URI format (`ues:test:resourcePoolName`) - can work alone or with other C3 pools only
+  - **Universe**: 24-character hexadecimal OID format - can work with business territory or alone
+  - **Business Territory**: HTTPS URL format (`https://domain.com/territory/id`) - can only be combined with Universe pools
+- **Token Provider Mocking**: Mock token provider to return token objects with `refresh()` method for BusinessTerritoryClient compatibility
+- **Display Testing**: Account for table display truncation when asserting on output content
+
 ### Special Features
 - **Gantt codec**: Special log visualization mode for ACCESS_LOG records
 - **Multiple output formats**: Support for various log output codecs (json, jsonstream, gantt)
