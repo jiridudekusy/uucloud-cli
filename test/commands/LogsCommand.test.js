@@ -664,4 +664,440 @@ describe('LogsCommand - using DI container with minimal mocks', () => {
     expect(mockExecuteCommand).toHaveBeenCalled();
     expect(console.log).toHaveBeenCalled();
   });
+
+  // Test 5: Gantt codec format
+  test('should handle gantt codec format', async () => {
+    // Arrange
+    const mockDeployments = [
+      { 
+        asid: 'test-asid-1',
+        code: 'test-app-1',
+        uri: 'ues:test:app:1',
+        version: '1.0.0',
+        config: {
+          uu_app_oidc_providers_oidcg02_uri: 'https://oidc.test.com',
+          uu_app_auditlog_app_logstore_uri: 'https://logstore.test.com'
+        }
+      }
+    ];
+    
+    const mockAccessLogs = [
+      {
+        appDeploymentUri: 'ues:test:app:1',
+        eventTime: new Date(),
+        recordType: 'ACCESS_LOG',
+        requestMethod: 'GET',
+        urlPath: '/api/test',
+        responseTime: 150,
+        responseStatus: 200,
+        traceId: 'test-trace-123'
+      }
+    ];
+    
+    container.get('taskUtils').loadPresent.mockReturnValue({
+      mocks: {
+        getAppDeploymentList: mockDeployments
+      }
+    });
+    
+    mockExecuteCommand.mockResolvedValue({
+      body: JSON.stringify({
+        pageEntries: mockAccessLogs,
+        totalSize: mockAccessLogs.length
+      })
+    });
+    
+    // Mock GanttConsole to avoid rendering issues
+    const GanttConsole = require('../../src/implementations/GanttConsole');
+    const originalFinish = GanttConsole.prototype.finish;
+    GanttConsole.prototype.finish = jest.fn().mockResolvedValue();
+    
+    try {
+      // Act
+      await command.execute({
+        resourcePool: ['test-resource-pool'],
+        apps: ['test-app-1'],
+        codec: 'gantt',
+        criteria: ['recordType:ACCESS_LOG']
+      });
+      
+      // Assert
+      expect(mockExecuteCommand).toHaveBeenCalledWith(
+        expect.stringContaining('recordType=ACCESS_LOG'),
+        'get',
+        null,
+        expect.any(Object)
+      );
+      expect(GanttConsole.prototype.finish).toHaveBeenCalled();
+    } finally {
+      // Cleanup
+      GanttConsole.prototype.finish = originalFinish;
+    }
+  });
+
+  test('should validate gantt codec requirements', async () => {
+    // Arrange
+    const mockDeployments = [
+      { 
+        asid: 'test-asid-1',
+        code: 'test-app-1',
+        uri: 'ues:test:app:1',
+        version: '1.0.0'
+      }
+    ];
+    
+    container.get('taskUtils').loadPresent.mockReturnValue({
+      mocks: {
+        getAppDeploymentList: mockDeployments
+      }
+    });
+    
+    // Act & Assert - Gantt without ACCESS_LOG criteria should fail
+    await expect(command.execute({
+      resourcePool: ['test-resource-pool'],
+      apps: ['test-app-1'],
+      codec: 'gantt'
+    })).rejects.toThrow('Can not use gantt without access log criteria');
+  });
+
+  test('should reject gantt codec with disable-resolving', async () => {
+    // Act & Assert - Gantt with disable-resolving should fail
+    await expect(command.execute({
+      resourcePool: ['test-resource-pool'],
+      apps: ['ues:test:app:1'],
+      codec: 'gantt',
+      criteria: ['recordType:ACCESS_LOG'],
+      disableResolving: true
+    })).rejects.toThrow('Gantt codec cannot be used with --disable-resolving');
+  });
+
+  // Test 6: Error handling scenarios
+  test('should handle invalid since/until combinations', async () => {
+    // Arrange - Set up minimal mock to avoid network calls
+    const mockDeployments = [
+      { 
+        asid: 'test-asid-1',
+        code: 'test-app-1',
+        uri: 'ues:test:app:1',
+        version: '1.0.0'
+      }
+    ];
+    
+    container.get('taskUtils').loadPresent.mockReturnValue({
+      mocks: {
+        getAppDeploymentList: mockDeployments
+      }
+    });
+    
+    // Act & Assert - Until without since should fail
+    await expect(command.execute({
+      resourcePool: ['test-resource-pool'],
+      apps: ['test-app-1'],
+      until: '2023-01-01T23:59:59.000Z'
+    })).rejects.toThrow('If you specify since, you must also specify until');
+  });
+
+  test('should handle invalid criteria format', async () => {
+    // Arrange
+    const mockDeployments = [
+      { 
+        asid: 'test-asid-1',
+        code: 'test-app-1',
+        uri: 'ues:test:app:1',
+        version: '1.0.0'
+      }
+    ];
+    
+    container.get('taskUtils').loadPresent.mockReturnValue({
+      mocks: {
+        getAppDeploymentList: mockDeployments
+      }
+    });
+    
+    // Act & Assert - Invalid criteria format should fail
+    await expect(command.execute({
+      resourcePool: ['test-resource-pool'],
+      apps: ['test-app-1'],
+      criteria: ['invalid-criteria-format']
+    })).rejects.toThrow('Invalid criterion invalid-criteria-format');
+  });
+
+  test('should handle follow with incompatible options', async () => {
+    // Arrange - Set up minimal mock to avoid network calls
+    const mockDeployments = [
+      { 
+        asid: 'test-asid-1',
+        code: 'test-app-1',
+        uri: 'ues:test:app:1',
+        version: '1.0.0'
+      }
+    ];
+    
+    container.get('taskUtils').loadPresent.mockReturnValue({
+      mocks: {
+        getAppDeploymentList: mockDeployments
+      }
+    });
+    
+    // Act & Assert - Follow with since should fail
+    await expect(command.execute({
+      resourcePool: ['test-resource-pool'],
+      apps: ['test-app-1'],
+      follow: true,
+      since: '2023-01-01T00:00:00.000Z'
+    })).rejects.toThrow('Follow cannot be used with since');
+    
+    // Act & Assert - Follow with until should fail
+    await expect(command.execute({
+      resourcePool: ['test-resource-pool'],
+      apps: ['test-app-1'],
+      follow: true,
+      until: '2023-01-01T23:59:59.000Z'
+    })).rejects.toThrow('Follow cannot be used with until');
+    
+    // Act & Assert - Follow with output should fail
+    await expect(command.execute({
+      resourcePool: ['test-resource-pool'],
+      apps: ['test-app-1'],
+      follow: true,
+      output: '/tmp/logs'
+    })).rejects.toThrow('Follow cannot be used with output');
+  });
+
+  // Test 7: Different output formats
+  test('should handle json codec output', async () => {
+    // Arrange
+    const mockDeployments = [
+      { 
+        asid: 'test-asid-1',
+        code: 'test-app-1',
+        uri: 'ues:test:app:1',
+        version: '1.0.0'
+      }
+    ];
+    
+    const mockLogs = [
+      {
+        appDeploymentUri: 'ues:test:app:1',
+        eventTime: new Date(),
+        recordType: 'TRACE_LOG',
+        logLevel: 'INFO',
+        message: 'Test log message'
+      }
+    ];
+    
+    container.get('taskUtils').loadPresent.mockReturnValue({
+      mocks: {
+        getAppDeploymentList: mockDeployments
+      }
+    });
+    
+    mockExecuteCommand.mockResolvedValue({
+      body: JSON.stringify({
+        pageEntries: mockLogs,
+        totalSize: mockLogs.length
+      })
+    });
+    
+    // Act
+    await command.execute({
+      resourcePool: ['test-resource-pool'],
+      apps: ['test-app-1'],
+      codec: 'json'
+    });
+    
+    // Assert
+    const console = container.get('console');
+    expect(mockExecuteCommand).toHaveBeenCalled();
+    expect(console.log).toHaveBeenCalled();
+  });
+
+  test('should handle jsonstream codec output', async () => {
+    // Arrange
+    const mockDeployments = [
+      { 
+        asid: 'test-asid-1',
+        code: 'test-app-1',
+        uri: 'ues:test:app:1',
+        version: '1.0.0'
+      }
+    ];
+    
+    const mockLogs = [
+      {
+        appDeploymentUri: 'ues:test:app:1',
+        eventTime: new Date(),
+        recordType: 'TRACE_LOG',
+        logLevel: 'INFO',
+        message: 'Test log message'
+      }
+    ];
+    
+    container.get('taskUtils').loadPresent.mockReturnValue({
+      mocks: {
+        getAppDeploymentList: mockDeployments
+      }
+    });
+    
+    mockExecuteCommand.mockResolvedValue({
+      body: JSON.stringify({
+        pageEntries: mockLogs,
+        totalSize: mockLogs.length
+      })
+    });
+    
+    // Act
+    await command.execute({
+      resourcePool: ['test-resource-pool'],
+      apps: ['test-app-1'],
+      codec: 'jsonstream'
+    });
+    
+    // Assert
+    const console = container.get('console');
+    expect(mockExecuteCommand).toHaveBeenCalled();
+    expect(console.log).toHaveBeenCalled();
+  });
+
+  test('should handle custom log format templates', async () => {
+    // Arrange
+    const mockDeployments = [
+      { 
+        asid: 'test-asid-1',
+        code: 'test-app-1',
+        uri: 'ues:test:app:1',
+        version: '1.0.0'
+      }
+    ];
+    
+    const mockLogs = [
+      {
+        appDeploymentUri: 'ues:test:app:1',
+        eventTime: new Date('2023-01-01T12:00:00.000Z'),
+        recordType: 'TRACE_LOG',
+        logLevel: 'ERROR',
+        message: 'Custom format test'
+      }
+    ];
+    
+    container.get('taskUtils').loadPresent.mockReturnValue({
+      mocks: {
+        getAppDeploymentList: mockDeployments
+      }
+    });
+    
+    mockExecuteCommand.mockResolvedValue({
+      body: JSON.stringify({
+        pageEntries: mockLogs,
+        totalSize: mockLogs.length
+      })
+    });
+    
+    // Act
+    await command.execute({
+      resourcePool: ['test-resource-pool'],
+      apps: ['test-app-1'],
+      format: '{{log.logLevel}} - {{log.message}}'
+    });
+    
+    // Assert
+    const console = container.get('console');
+    expect(mockExecuteCommand).toHaveBeenCalled();
+    expect(console.log).toHaveBeenCalled();
+  });
+
+  // Test 8: Advanced options
+  test('should handle custom log store URI', async () => {
+    // Arrange
+    const mockDeployments = [
+      { 
+        asid: 'test-asid-1',
+        code: 'test-app-1',
+        uri: 'ues:test:app:1',
+        version: '1.0.0'
+      }
+    ];
+    
+    const mockLogs = [
+      {
+        appDeploymentUri: 'ues:test:app:1',
+        eventTime: new Date(),
+        recordType: 'TRACE_LOG',
+        logLevel: 'INFO',
+        message: 'Custom logstore test'
+      }
+    ];
+    
+    container.get('taskUtils').loadPresent.mockReturnValue({
+      mocks: {
+        getAppDeploymentList: mockDeployments
+      }
+    });
+    
+    mockExecuteCommand.mockResolvedValue({
+      body: JSON.stringify({
+        pageEntries: mockLogs,
+        totalSize: mockLogs.length
+      })
+    });
+    
+    // Act
+    await command.execute({
+      resourcePool: ['test-resource-pool'],
+      apps: ['test-app-1'],
+      logStoreUri: 'https://custom-logstore.example.com/'
+    });
+    
+    // Assert
+    const console = container.get('console');
+    expect(mockExecuteCommand).toHaveBeenCalled();
+    expect(console.log).toHaveBeenCalled();
+  });
+
+  test('should handle different time window types', async () => {
+    // Arrange
+    const mockDeployments = [
+      { 
+        asid: 'test-asid-1',
+        code: 'test-app-1',
+        uri: 'ues:test:app:1',
+        version: '1.0.0'
+      }
+    ];
+    
+    const mockLogs = [
+      {
+        appDeploymentUri: 'ues:test:app:1',
+        eventTime: new Date(),
+        recordType: 'TRACE_LOG',
+        logLevel: 'INFO',
+        message: 'Time window test'
+      }
+    ];
+    
+    container.get('taskUtils').loadPresent.mockReturnValue({
+      mocks: {
+        getAppDeploymentList: mockDeployments
+      }
+    });
+    
+    mockExecuteCommand.mockResolvedValue({
+      body: JSON.stringify({
+        pageEntries: mockLogs,
+        totalSize: mockLogs.length
+      })
+    });
+    
+    // Act
+    await command.execute({
+      resourcePool: ['test-resource-pool'],
+      apps: ['test-app-1'],
+      timeWindowType: 'eventTime'
+    });
+    
+    // Assert
+    const console = container.get('console');
+    expect(mockExecuteCommand).toHaveBeenCalled();
+    expect(console.log).toHaveBeenCalled();
+  });
 }); 
