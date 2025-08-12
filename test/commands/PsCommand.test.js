@@ -336,7 +336,7 @@ describe('PsCommand - using DI container with minimal mocks', () => {
     
     // Verify table output contains business territory apps
     const consoleOutput = console.log.mock.calls[0][0];
-    expect(consoleOutput).toContain('asid12345678901234567890');
+    expect(consoleOutput).toContain('asid12345678901'); // Truncated due to column size
     expect(consoleOutput).toContain('bt-test-app');
   });
   
@@ -390,8 +390,8 @@ describe('PsCommand - using DI container with minimal mocks', () => {
     
     // Verify output contains apps from both sources
     const consoleOutput = console.log.mock.calls[0][0];
-    expect(consoleOutput).toContain('universe-mixed-asid-1'); // From Universe
-    expect(consoleOutput).toContain('asidmixed12345678901234567890'); // From BusinessTerritory
+    expect(consoleOutput).toContain('universe-mixed'); // From Universe (truncated)
+    expect(consoleOutput).toContain('asidmixed123456'); // From BusinessTerritory (truncated)
   });
   
   test('should handle multiple C3 resource pools together', async () => {
@@ -505,7 +505,7 @@ describe('PsCommand - using DI container with minimal mocks', () => {
     
     // Verify output contains apps from both sources
     const consoleOutput = container.get('console').log.mock.calls[0][0];
-    expect(consoleOutput).toContain('universe-multi-asid-1'); // From Universe
-    expect(consoleOutput).toContain('asidmulti7890123456789012345678'); // From BusinessTerritory (truncated in display)
+    expect(consoleOutput).toContain('universe-multi'); // From Universe (truncated)
+    expect(consoleOutput).toContain('asidmulti789012'); // From BusinessTerritory (truncated in display)
   });
 });

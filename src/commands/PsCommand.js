@@ -135,10 +135,11 @@ class PsCommand extends Command {
    * @private
    */
   _printTable(deployList, apps) {
-    let table = new Table({
-      head: ["asid", "uuSubApp", "Version", "Tags", "Node size", "Node Count", "CPU", "Memory", "State"],
-      colWidths: [34, 50, 20, 20, 12, 13, 10, 10, 12]
-    });
+    // Get terminal width and calculate column widths
+    const terminalWidth = process.stdout.columns || 80;
+    const tableConfig = this._calculateTableConfig(terminalWidth);
+
+    let table = new Table(tableConfig);
     
     let itemList = deployList;
     let filteredPageEntries = filterAppDeployments(deployList, apps);
@@ -169,6 +170,36 @@ class PsCommand extends Command {
     );
     
     this._console.log(table.toString());
+  }
+
+  /**
+   * Calculate table configuration based on terminal width
+   * @param {number} terminalWidth - Available terminal width
+   * @returns {Object} - Table configuration object
+   * @private
+   */
+  _calculateTableConfig(terminalWidth) {
+    // Account for table borders and padding (3 chars per column + 1 for final border)
+    const tableOverhead = (9 * 3) + 1;
+    const availableWidth = Math.max(terminalWidth - tableOverhead, 100);
+    
+    // Define proportional weights for each column (higher = more space)
+    const columnWeights = [34, 50, 20, 20, 12, 13, 10, 10, 12]; // Original widths as weights
+    const totalWeight = columnWeights.reduce((sum, weight) => sum + weight, 0);
+    
+    // Calculate proportional widths based on available space
+    const colWidths = columnWeights.map(weight => {
+      const proportionalWidth = Math.floor((weight / totalWeight) * availableWidth);
+      return Math.max(proportionalWidth, 3); // Minimum 3 chars per column
+    });
+    
+    // Choose headers based on terminal width
+    let headers = ["asid", "App", "Version", "Tags", "Size", "Count", "CPU", "Mem", "State"];
+
+    return {
+      head: headers,
+      colWidths: colWidths
+    };
   }
 
   /**
