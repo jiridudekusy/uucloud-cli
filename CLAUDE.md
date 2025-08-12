@@ -47,6 +47,12 @@ This is a Node.js CLI application for managing uuCloud deployments. The applicat
 - Mock implementations available in `test/mocks/`
 - Coverage reports generated in `coverage/` directory
 
+#### CRITICAL Testing Requirements
+- **ALWAYS run `npm test` after making any code changes** to validate all functionality
+- **Create tests for new functions** when adding functionality
+- **Update existing tests** when modifying functions to ensure they still work correctly
+- **Never skip testing** - it's essential for maintaining code quality and preventing regressions
+
 #### Key Testing Principles
 - **Minimal Mocking Strategy**: Only mock external dependencies (network calls, APIs) rather than internal business logic
   - Mock only specific methods that make network calls: `UuCloud.prototype._executeCommand`, `UuUniverseClient.prototype.#commandGet`, `AppClient.get`
