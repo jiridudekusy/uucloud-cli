@@ -4,9 +4,16 @@ const { searchPrompt } = require("../misc/prompt-utils");
 const { LoggerFactory } = require("uu_appg01_core-logging");
 const logger = LoggerFactory.get("InteractiveCommand");
 const actionHandlerFactory = require("../actions/action-handler-factory");
+const Config = require('../misc/config');
 
 const optionsDefinitions = [
-    ...commonOptionsDefinitionsWithPresentAndApps
+    ...commonOptionsDefinitionsWithPresentAndApps,
+    {
+        name: "select-preset",
+        alias: "s",
+        type: Boolean,
+        description: "Interactively select from available presets before proceeding."
+    }
 ];
 
 const help = [
@@ -16,7 +23,7 @@ const help = [
     },
     {
         header: 'Synopsis',
-        content: '$ uucloud i [-r {underline uri}]'
+        content: '$ uucloud i -s'
     },
     {
         header: 'Options',
@@ -52,6 +59,11 @@ class InteractiveCommand extends Command {
             // Parse and validate arguments
             let options = this._taskUtils.parseCliArguments(args);
             verifyCommonOptionsDefinitionsWithPresent(options, this._taskUtils);
+            
+            // Handle preset selection if requested
+            if (options.selectPreset) {
+                await this._handlePresetSelection(options);
+            }
             
             let present = this._taskUtils.loadPresent(options);
             options = this._taskUtils.mergeWithConfig(options, present);
@@ -124,6 +136,44 @@ class InteractiveCommand extends Command {
             throw error;
         }
     }
+
+    /**
+     * Handle preset selection when --select-preset flag is used
+     * @param {Object} options - Command options (modified in place)
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _handlePresetSelection(options) {
+        const presets = Config.get('presents') || {};
+        const presetNames = Object.keys(presets);
+        
+        if (presetNames.length === 0) {
+            this._console.error('No presets available. You can create presets in your ~/.uucloud-cli/config.json file.');
+            return;
+        }
+        
+        // Create preset options for the prompt
+        const presetOptions = [
+            {
+                name: '[No preset - continue with current options]',
+                value: null
+            },
+            ...presetNames.map(name => ({
+                name: name,
+                value: name
+            }))
+        ];
+        
+        const selectedPreset = await searchPrompt("Select a preset:", presetOptions);
+        
+        if (selectedPreset) {
+            this._console.error(`Using preset: ${selectedPreset}`);
+            options.present = selectedPreset;
+        } else {
+            this._console.error('Continuing without preset...');
+        }
+    }
+
 
 
 }

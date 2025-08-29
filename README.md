@@ -104,6 +104,10 @@ The kebab-case format is the preferred standard and is used in all documentation
 
 # Release Notes
 
+1.0.0
+-----
+- **Interactive Preset Selection**: Added `--select-preset` (`-s`) flag to `uucloud i` command for choosing configured environment presets
+
 1.0.0-beta.16
 -------------
 - **Business Territory Resource Pool Support**
