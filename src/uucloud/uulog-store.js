@@ -1,5 +1,5 @@
-const CmdHelper = require("uu_appg01_core-npm/src/scripts/uu_cloud/misc/cmd-helper.js");
-const AppClient = require("uu_appg01_core-npm/src/scripts/uu_cloud/misc/app-client.js");
+const CmdHelper = require("./cmd-helper.js");
+const AppClient = require("./app-client.js");
 const DEFAULT_CMD_BASE_PATH = "Log/getRecordList/exec";
 const DEFAULT_G02_CMD_BASE_PATH = "log/getRecordList";
 const {LoggerFactory} = require("uu_appg01_core-logging");
