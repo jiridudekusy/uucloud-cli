@@ -1,6 +1,6 @@
 Config = require("uu_appg01_core-utils").Config;
 const OidcToken = require("./devkit/oidc-token");
-const BasicAuth = require("uu_appg01_devkit-common/src/scripts/basic-auth");
+const BasicAuth = require("./devkit/basic-auth");
 const homedir = require("os").homedir();
 const path = require("path");
 const fs = require("fs");

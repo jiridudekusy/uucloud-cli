@@ -4,7 +4,7 @@ const http = require("http");
 const url = require("url");
 // Replace require("open") with dynamic import preparation
 const Got = require("got");
-const ConfigHelper = require("uu_appg01_devkit-common/src/scripts/misc/config-helper");
+const ConfigHelper = require("./config-helper");
 
 const OAUTH_CODE = "code";
 const DEFAULT_OIDC_TENANT = "bb977a99f4cc4c37a2afce3fd599d0a7";
