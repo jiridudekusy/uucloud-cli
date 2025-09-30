@@ -45,7 +45,6 @@
     "uu_appg01_core-logging": "^6.0.0",
     "uu_appg01_core-npm": "^4.3.0",
     "uu_appg01_core-utils": "^6.0.0",
-    "uu_appg01_devkit-common": "^4.2.1",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
