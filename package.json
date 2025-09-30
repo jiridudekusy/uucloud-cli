@@ -13,7 +13,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "uu-safe-install": "npx uu-safe-install"
+    "uu-safe-install": "npx uu-safe-install",
+    "uu-safe-update": "npx uu-safe-update",
+    "uu-safe-clean-install": "npx uu-safe-clean-install"
   },
   "main": "index.js",
   "dependencies": {
@@ -30,8 +32,10 @@
     "date-and-time": "^0.6.3",
     "dayjs": "^1.11.13",
     "filtrex": "^2.1.0",
+    "got": "^9.6.0",
     "handlebars": "^4.1.2",
     "handlebars-helpers": "^0.10.0",
+    "jsonwebtoken": "^9.0.0",
     "mkdirp": "^0.5.1",
     "moment": "^2.23.0",
     "oidc-plus4u-vault": "^0.9.1",

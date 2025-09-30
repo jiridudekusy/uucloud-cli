@@ -4,15 +4,15 @@ This tool allows to execute various operations on uuCloud using CLI.
 
 ## Linux and MacOS
 ### Stable
-`MONGOMS_DISABLE_POSTINSTALL=1 npm install --registry "https://repo.plus4u.net/repository/npm/" -g uucloud-cli`
+`MONGOMS_DISABLE_POSTINSTALL=1 npx uu-safe-install install --registry "https://repo.plus4u.net/repository/npm/" -g uucloud-cli`
 ### Beta
-`MONGOMS_DISABLE_POSTINSTALL=1 npm install --registry "https://repo.plus4u.net/repository/npm/" -g uucloud-cli@beta`
+`MONGOMS_DISABLE_POSTINSTALL=1 npx uu-safe-install install --registry "https://repo.plus4u.net/repository/npm/" -g uucloud-cli@beta`
 
 ## Windows
 ### Stable
-`npm install --registry "https://repo.plus4u.net/repository/npm/" -g uucloud-cli`
+`npx uu-safe-install install --registry "https://repo.plus4u.net/repository/npm/" -g uucloud-cli`
 ### Beta 
-`npm install --registry "https://repo.plus4u.net/repository/npm/" -g uucloud-cli@beta`
+`npx uu-safe-install install --registry "https://repo.plus4u.net/repository/npm/" -g uucloud-cli@beta`
 
 # How to use ?
 
