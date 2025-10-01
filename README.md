@@ -104,6 +104,15 @@ The kebab-case format is the preferred standard and is used in all documentation
 
 # Release Notes
 
+1.1.0-beta.2
+------------
+- **Dependency Reduction**: Removed external dependencies `uu_appg01_devkit-common` and `uu_appg01_core-npm`
+- **Installation**: Updated installation instructions to use `uu-safe-install` for secure dependency installation
+
+1.1.0-beta.1
+------------
+- **Interactive Mode for preset**: Added interactive parameter `-s` for easier preset selection
+
 1.0.0
 -----
 - **Interactive Preset Selection**: Added `--select-preset` (`-s`) flag to `uucloud i` command for choosing configured environment presets
